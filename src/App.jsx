@@ -1,6 +1,10 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { lookupDOI, searchByTitle, lookupOpenAccessPdf, fetchThumbnail } from "./lib/crossref"
 import { initCitationStyles, formatCitation, STYLES } from "./lib/citation"
+import { parseBatchInput, runBatchSearch, MAX_BATCH_ITEMS } from "./lib/batch"
+import { saveToLibrary, isInLibrary } from "./lib/storage"
+import BatchResults from "./components/BatchResults"
+import LibraryPanel from "./components/LibraryPanel"
 import "./App.css"
 
 const SearchIcon = () => (
@@ -28,23 +32,27 @@ const BookIcon = () => (
 )
 
 export default function App() {
-  const [mode, setMode] = useState("doi")
+  const [tab, setTab] = useState("search") // "search" | "library"
+  const [mode, setMode] = useState("doi") // "doi" | "title" | "batch"
   const [input, setInput] = useState("")
+  const [batchInput, setBatchInput] = useState("")
   const [status, setStatus] = useState("idle")
   const [metadata, setMetadata] = useState(null)
   const [selectedStyle, setSelectedStyle] = useState("ieee")
-  const [citation, setCitation] = useState("")
   const [copied, setCopied] = useState(false)
+  const [saved, setSaved] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
   const [thumbnail, setThumbnail] = useState(null)
 
+  const [batchProgress, setBatchProgress] = useState(null) // {done, total, current}
+  const [batchResults, setBatchResults] = useState(null)
+
   useEffect(() => { initCitationStyles() }, [])
 
-  useEffect(() => {
-    if (metadata) {
-      try { setCitation(formatCitation(metadata, selectedStyle)) }
-      catch { setCitation("Gagal memformat sitasi.") }
-    }
+  const citation = useMemo(() => {
+    if (!metadata) return ""
+    try { return formatCitation(metadata, selectedStyle) }
+    catch { return "Gagal memformat sitasi." }
   }, [metadata, selectedStyle])
 
   const handleSearch = async () => {
@@ -53,6 +61,7 @@ export default function App() {
     setMetadata(null)
     setThumbnail(null)
     setErrorMsg("")
+    setSaved(false)
 
     try {
       let result = null
@@ -70,6 +79,7 @@ export default function App() {
 
       setMetadata(result.data)
       setStatus("success")
+      setSaved(isInLibrary(result.data.doi))
 
       // fetch PDF open access link & thumbnail — non-blocking
       lookupOpenAccessPdf(result.data.doi).then(url => {
@@ -85,7 +95,22 @@ export default function App() {
     }
   }
 
-  const handleKeyDown = (e) => { if (e.key === "Enter") handleSearch() }
+  const handleBatchSearch = async () => {
+    const lines = parseBatchInput(batchInput)
+    if (lines.length === 0) return
+
+    setStatus("loading")
+    setBatchResults(null)
+    setBatchProgress({ done: 0, total: lines.length, current: lines[0] })
+
+    const results = await runBatchSearch(lines, setBatchProgress)
+
+    setBatchResults(results)
+    setBatchProgress(null)
+    setStatus("idle")
+  }
+
+  const handleKeyDown = (e) => { if (e.key === "Enter" && mode !== "batch") handleSearch() }
 
   const handleCopy = () => {
     navigator.clipboard.writeText(citation)
@@ -93,11 +118,21 @@ export default function App() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const handleSave = () => {
+    if (!metadata) return
+    const res = saveToLibrary(metadata)
+    if (res.ok || res.reason === "duplicate") setSaved(true)
+  }
+
   const switchMode = (m) => {
-    setMode(m); setInput(""); setStatus("idle"); setMetadata(null); setThumbnail(null)
+    setMode(m)
+    setInput(""); setBatchInput("")
+    setStatus("idle"); setMetadata(null); setThumbnail(null)
+    setBatchResults(null); setBatchProgress(null)
   }
 
   const hasResult = status === "success" && metadata
+  const batchLineCount = parseBatchInput(batchInput).length
 
   return (
     <div className="app">
@@ -108,106 +143,159 @@ export default function App() {
           <p className="tagline">Metadata jurnal lengkap, format daftar pustaka instan.</p>
         </header>
 
-        <div className="card search-card">
-          <div className="mode-toggle">
-            <button className={`mode-btn ${mode === "doi" ? "active" : ""}`} onClick={() => switchMode("doi")}>DOI</button>
-            <button className={`mode-btn ${mode === "title" ? "active" : ""}`} onClick={() => switchMode("title")}>Judul</button>
-          </div>
-          <div className="input-wrapper">
-            <input
-              className="input"
-              type="text"
-              placeholder={mode === "doi" ? "Contoh: 10.1109/JPROC.2014.2371999" : "Contoh: Software-Defined Networking: A Comprehensive Survey"}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-            <button className="search-btn" onClick={handleSearch} disabled={status === "loading" || !input.trim()}>
-              {status === "loading" ? <span className="spinner" /> : <SearchIcon />}
-              <span>{status === "loading" ? "Mencari..." : "Cari"}</span>
-            </button>
-          </div>
-          {status === "error" && <p className="error-msg">{errorMsg}</p>}
+        <div className="top-tabs">
+          <button className={`top-tab ${tab === "search" ? "active" : ""}`} onClick={() => setTab("search")}>Cari</button>
+          <button className={`top-tab ${tab === "library" ? "active" : ""}`} onClick={() => setTab("library")}>Library</button>
         </div>
 
-        {hasResult && (
-          <div className="result-grid">
-
-            {/* Kolom kiri: cover + abstract */}
-            <div className="card col-left">
-              <div className="cover-box">
-                {thumbnail
-                  ? <img src={thumbnail} alt="cover" className="cover-img" />
-                  : <div className="cover-placeholder"><BookIcon /></div>
-                }
+        {tab === "search" && (
+          <>
+            <div className="card search-card">
+              <div className="mode-toggle">
+                <button className={`mode-btn ${mode === "doi" ? "active" : ""}`} onClick={() => switchMode("doi")}>DOI</button>
+                <button className={`mode-btn ${mode === "title" ? "active" : ""}`} onClick={() => switchMode("title")}>Judul</button>
+                <button className={`mode-btn ${mode === "batch" ? "active" : ""}`} onClick={() => switchMode("batch")}>Banyak Sekaligus</button>
               </div>
-              <p className="result-title">{metadata.title}</p>
-              <p className="result-authors">{metadata.authors?.join(", ")}</p>
-              <p className="result-venue">
-                {[metadata.journal, metadata.volume && `Vol. ${metadata.volume}`, metadata.issue && `No. ${metadata.issue}`, metadata.pages && `pp. ${metadata.pages}`, metadata.year].filter(Boolean).join(" · ")}
-              </p>
 
-              {metadata.doi && (
-                <div className="link-row">
-                  <a className="link-pill" href={`https://doi.org/${metadata.doi}`} target="_blank" rel="noreferrer">
-                    Lihat Sumber
-                  </a>
-                  {metadata.pdfUrl && (
-                    <a className="link-pill link-pill-pdf" href={metadata.pdfUrl} target="_blank" rel="noreferrer">
-                      Unduh PDF
-                    </a>
+              {mode !== "batch" ? (
+                <div className="input-wrapper">
+                  <input
+                    className="input"
+                    type="text"
+                    placeholder={mode === "doi" ? "Contoh: 10.1109/JPROC.2014.2371999" : "Contoh: Software-Defined Networking: A Comprehensive Survey"}
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                  />
+                  <button className="search-btn" onClick={handleSearch} disabled={status === "loading" || !input.trim()}>
+                    {status === "loading" ? <span className="spinner" /> : <SearchIcon />}
+                    <span>{status === "loading" ? "Mencari..." : "Cari"}</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="batch-input-wrapper">
+                  <textarea
+                    className="batch-textarea"
+                    rows={6}
+                    placeholder={"Tempel DOI atau judul, satu per baris. Contoh:\n10.1109/JPROC.2014.2371999\nAttention Is All You Need\n10.1145/3292500.3330919"}
+                    value={batchInput}
+                    onChange={e => setBatchInput(e.target.value)}
+                  />
+                  <div className="batch-toolbar">
+                    <span className="batch-count">
+                      {batchLineCount} baris {batchLineCount >= MAX_BATCH_ITEMS && `(maks. ${MAX_BATCH_ITEMS})`}
+                    </span>
+                    <button className="search-btn" onClick={handleBatchSearch} disabled={status === "loading" || batchLineCount === 0}>
+                      {status === "loading" ? <span className="spinner" /> : <SearchIcon />}
+                      <span>{status === "loading" ? "Mencari..." : "Cari Semua"}</span>
+                    </button>
+                  </div>
+                  {batchProgress && (
+                    <div className="batch-progress">
+                      <div className="batch-progress-bar">
+                        <div className="batch-progress-fill" style={{ width: `${(batchProgress.done / batchProgress.total) * 100}%` }} />
+                      </div>
+                      <p className="batch-progress-label">
+                        {batchProgress.done}/{batchProgress.total}
+                        {batchProgress.current ? ` — mencari: ${batchProgress.current}` : " — selesai"}
+                      </p>
+                    </div>
                   )}
                 </div>
               )}
 
-              {metadata.abstract && (
-                <div className="abstract-section">
-                  <p className="abstract-text">{metadata.abstract}</p>
-                </div>
-              )}
+              {status === "error" && mode !== "batch" && <p className="error-msg">{errorMsg}</p>}
             </div>
 
-            {/* Kolom kanan: metadata + sitasi */}
-            <div className="card col-right">
-              <div className="metadata-grid">
-                <MetaRow label="Judul" value={metadata.title} />
-                <MetaRow label="Penulis" value={metadata.authors?.join(", ")} />
-                <MetaRow label="Jurnal" value={metadata.journal} />
-                <MetaRow label="Tahun" value={metadata.year} />
-                <MetaRow label="Volume" value={metadata.volume} />
-                <MetaRow label="Issue" value={metadata.issue} />
-                <MetaRow label="Halaman" value={metadata.pages} />
-                <MetaRow label="DOI" value={metadata.doi} />
-                {metadata.isbn && <MetaRow label="ISBN" value={metadata.isbn} />}
-              </div>
+            {mode === "batch" && batchResults && (
+              <BatchResults results={batchResults} />
+            )}
 
-              <div className="divider" />
+            {hasResult && mode !== "batch" && (
+              <div className="result-grid">
 
-              <div className="format-section">
-                <p className="section-label">Format Sitasi</p>
-                <div className="style-pills">
-                  {STYLES.map(s => (
-                    <button key={s.id} className={`style-pill ${selectedStyle === s.id ? "active" : ""}`} onClick={() => setSelectedStyle(s.id)}>
-                      {s.label}
+                {/* Kolom kiri: cover + abstract */}
+                <div className="card col-left">
+                  <div className="cover-box">
+                    {thumbnail
+                      ? <img src={thumbnail} alt="cover" className="cover-img" />
+                      : <div className="cover-placeholder"><BookIcon /></div>
+                    }
+                  </div>
+                  <p className="result-title">{metadata.title}</p>
+                  <p className="result-authors">{metadata.authors?.join(", ")}</p>
+                  <p className="result-venue">
+                    {[metadata.journal, metadata.volume && `Vol. ${metadata.volume}`, metadata.issue && `No. ${metadata.issue}`, metadata.pages && `pp. ${metadata.pages}`, metadata.year].filter(Boolean).join(" · ")}
+                  </p>
+
+                  <div className="link-row">
+                    {metadata.doi && (
+                      <a className="link-pill" href={`https://doi.org/${metadata.doi}`} target="_blank" rel="noreferrer">
+                        Lihat Sumber
+                      </a>
+                    )}
+                    {metadata.pdfUrl && (
+                      <a className="link-pill link-pill-pdf" href={metadata.pdfUrl} target="_blank" rel="noreferrer">
+                        Unduh PDF
+                      </a>
+                    )}
+                    <button className="link-pill link-pill-save" onClick={handleSave} disabled={saved}>
+                      {saved ? "Tersimpan di Library" : "Simpan ke Library"}
                     </button>
-                  ))}
-                </div>
-              </div>
+                  </div>
 
-              <div className="citation-box">
-                <div className="citation-header">
-                  <span className="citation-label">{STYLES.find(s => s.id === selectedStyle)?.label}</span>
-                  <button className="copy-btn" onClick={handleCopy}>
-                    {copied ? <CheckIcon /> : <CopyIcon />}
-                    <span>{copied ? "Tersalin!" : "Salin"}</span>
-                  </button>
+                  {metadata.abstract && (
+                    <div className="abstract-section">
+                      <p className="abstract-text">{metadata.abstract}</p>
+                    </div>
+                  )}
                 </div>
-                <p className="citation-text">{citation}</p>
-              </div>
-            </div>
 
-          </div>
+                {/* Kolom kanan: metadata + sitasi */}
+                <div className="card col-right">
+                  <div className="metadata-grid">
+                    <MetaRow label="Judul" value={metadata.title} />
+                    <MetaRow label="Penulis" value={metadata.authors?.join(", ")} />
+                    <MetaRow label="Jurnal" value={metadata.journal} />
+                    <MetaRow label="Tahun" value={metadata.year} />
+                    <MetaRow label="Volume" value={metadata.volume} />
+                    <MetaRow label="Issue" value={metadata.issue} />
+                    <MetaRow label="Halaman" value={metadata.pages} />
+                    <MetaRow label="DOI" value={metadata.doi} />
+                    {metadata.isbn && <MetaRow label="ISBN" value={metadata.isbn} />}
+                  </div>
+
+                  <div className="divider" />
+
+                  <div className="format-section">
+                    <p className="section-label">Format Sitasi</p>
+                    <div className="style-pills">
+                      {STYLES.map(s => (
+                        <button key={s.id} className={`style-pill ${selectedStyle === s.id ? "active" : ""}`} onClick={() => setSelectedStyle(s.id)}>
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="citation-box">
+                    <div className="citation-header">
+                      <span className="citation-label">{STYLES.find(s => s.id === selectedStyle)?.label}</span>
+                      <button className="copy-btn" onClick={handleCopy}>
+                        {copied ? <CheckIcon /> : <CopyIcon />}
+                        <span>{copied ? "Tersalin!" : "Salin"}</span>
+                      </button>
+                    </div>
+                    <p className="citation-text">{citation}</p>
+                  </div>
+                </div>
+
+              </div>
+            )}
+          </>
         )}
+
+        {tab === "library" && <LibraryPanel />}
 
         <footer className="footer">
           <p>Data dari <a href="https://crossref.org" target="_blank" rel="noreferrer">CrossRef</a>, <a href="https://datacite.org" target="_blank" rel="noreferrer">DataCite</a> & <a href="https://unpaywall.org" target="_blank" rel="noreferrer">Unpaywall</a></p>

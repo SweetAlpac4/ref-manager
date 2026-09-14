@@ -82,12 +82,14 @@ const parseDataCite = (data) => {
 export const lookupOpenAccessPdf = async (doi) => {
   if (!doi) return null
   try {
-    const r = await fetch(`https://api.unpaywall.org/v2/${encodeURIComponent(doi)}?email=refmate.app@proton.me`)
+    // Ganti email ini ke kontak project kamu sendiri sebelum deploy —
+    // Unpaywall mewajibkan parameter email untuk identifikasi klien API.
+    const r = await fetch(`https://api.unpaywall.org/v2/${encodeURIComponent(doi)}?email=nabiltsad@gmail.com`)
     if (!r.ok) return null
     const data = await r.json()
     if (!data.is_oa) return null
     return data.best_oa_location?.url_for_pdf || data.best_oa_location?.url || null
-  } catch (_) {
+  } catch {
     return null
   }
 }
@@ -102,7 +104,7 @@ export const fetchThumbnail = async (meta) => {
     const blob = await r.blob()
     if (blob.size < 1000) return null
     return URL.createObjectURL(blob)
-  } catch (_) {
+  } catch {
     return null
   }
 }
@@ -121,7 +123,7 @@ export const lookupDOI = async (doi) => {
       const data = (await r.json()).message
       return { source: 'crossref', data: parseCrossRef(data) }
     }
-  } catch (_) {}
+  } catch { /* fallback ke DataCite di bawah */ }
 
   try {
     const r = await fetch(`https://api.datacite.org/dois/${encoded}`)
@@ -129,7 +131,7 @@ export const lookupDOI = async (doi) => {
       const data = (await r.json()).data.attributes
       return { source: 'datacite', data: parseDataCite(data) }
     }
-  } catch (_) {}
+  } catch { /* DOI tidak ditemukan di kedua sumber */ }
 
   return null
 }
@@ -151,7 +153,7 @@ export const searchByTitle = async (title) => {
     const overlap = [...titleWords].filter(w => resultWords.has(w)).length / titleWords.size
     if (overlap < 0.5) return null
     return { source: 'crossref', data: parseCrossRef(data) }
-  } catch (_) {
+  } catch {
     return null
   }
 }
