@@ -1,25 +1,44 @@
-import { useState } from "react"
-import { saveToLibrary, isInLibrary } from "../lib/storage"
+import { useState, useEffect } from "react"
+import { saveToLibrary, getSavedDois } from "../lib/storage"
+import ReferenceDetail from "./ReferenceDetail"
 
 export default function BatchResults({ results, onSavedChange }) {
-  const [savedInputs, setSavedInputs] = useState(() => new Set())
+  const [savedDois, setSavedDois] = useState(() => new Set())
+  const [openItem, setOpenItem] = useState(null)
 
-  const handleSave = (data, input) => {
-    const res = saveToLibrary(data)
+  useEffect(() => {
+    getSavedDois().then(setSavedDois)
+  }, [])
+
+  const handleSave = async (data, e) => {
+    e.stopPropagation()
+    const res = await saveToLibrary(data)
     if (res.ok || res.reason === "duplicate") {
-      setSavedInputs(prev => new Set(prev).add(input))
+      if (data.doi) setSavedDois(prev => new Set(prev).add(data.doi))
       onSavedChange?.()
     }
   }
 
-  const handleSaveAll = () => {
-    for (const r of results) {
-      if (r.status === "success" && !savedInputs.has(r.input)) {
-        saveToLibrary(r.data)
+  const handleSaveAll = async () => {
+    const successes = results.filter(r => r.status === "success")
+    for (const r of successes) {
+      if (!r.data.doi || !savedDois.has(r.data.doi)) {
+        await saveToLibrary(r.data)
       }
     }
-    setSavedInputs(new Set(results.map(r => r.input)))
+    setSavedDois(await getSavedDois())
     onSavedChange?.()
+  }
+
+  if (openItem) {
+    return (
+      <ReferenceDetail
+        key={openItem.doi || openItem.title}
+        metadata={openItem}
+        onBack={() => setOpenItem(null)}
+        onSaveChange={onSavedChange}
+      />
+    )
   }
 
   const successCount = results.filter(r => r.status === "success").length
@@ -33,31 +52,38 @@ export default function BatchResults({ results, onSavedChange }) {
         )}
       </div>
       <ul className="batch-list">
-        {results.map((r, idx) => (
-          <li key={idx} className={`batch-item batch-item-${r.status}`}>
-            <div className="batch-item-main">
-              <p className="batch-item-input">{r.input}</p>
+        {results.map((r, idx) => {
+          const isSaved = r.status === "success" && r.data.doi && savedDois.has(r.data.doi)
+          return (
+            <li
+              key={idx}
+              className={`batch-item batch-item-${r.status} ${r.status === "success" ? "clickable" : ""}`}
+              onClick={() => r.status === "success" && setOpenItem(r.data)}
+            >
+              <div className="batch-item-main">
+                <p className="batch-item-input">{r.input}</p>
+                {r.status === "success" && (
+                  <p className="batch-item-title">{r.data.title}</p>
+                )}
+                {r.status === "not_found" && (
+                  <p className="batch-item-note">Tidak ditemukan</p>
+                )}
+                {r.status === "error" && (
+                  <p className="batch-item-note">Gagal mengambil data</p>
+                )}
+              </div>
               {r.status === "success" && (
-                <p className="batch-item-title">{r.data.title}</p>
+                <button
+                  className="link-pill"
+                  disabled={isSaved}
+                  onClick={(e) => handleSave(r.data, e)}
+                >
+                  {isSaved ? "Tersimpan" : "Simpan"}
+                </button>
               )}
-              {r.status === "not_found" && (
-                <p className="batch-item-note">Tidak ditemukan</p>
-              )}
-              {r.status === "error" && (
-                <p className="batch-item-note">Gagal mengambil data</p>
-              )}
-            </div>
-            {r.status === "success" && (
-              <button
-                className="link-pill"
-                disabled={savedInputs.has(r.input) || isInLibrary(r.data.doi)}
-                onClick={() => handleSave(r.data, r.input)}
-              >
-                {savedInputs.has(r.input) || isInLibrary(r.data.doi) ? "Tersimpan" : "Simpan"}
-              </button>
-            )}
-          </li>
-        ))}
+            </li>
+          )
+        })}
       </ul>
     </div>
   )

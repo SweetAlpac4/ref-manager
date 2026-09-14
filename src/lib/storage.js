@@ -1,7 +1,20 @@
-const STORAGE_KEY = "refmanager:library:v1"
+import Dexie from "dexie"
 
-// --- validasi skema minimal, dipakai saat baca dari localStorage MAUPUN saat import file ---
-// Kalau ada entry yang bentuknya tidak sesuai, entry itu di-skip, bukan bikin seluruh app crash.
+// --- Database ---
+// IndexedDB dipakai untuk data yang bisa berkembang besar (referensi + metadata).
+// localStorage sengaja TIDAK dipakai lagi untuk ini karena:
+// 1. Setiap update harus baca-ubah-tulis seluruh isi library sekaligus (lambat & rawan race condition)
+// 2. Batas ukuran ~5-10MB gampang kena kalau nanti ada abstract, tags, notes, dsb dalam jumlah banyak
+// 3. IndexedDB bisa query/update satu record saja, dan punya index (mis. by doi) untuk cek duplikat cepat
+export const db = new Dexie("RefManagerDB")
+db.version(1).stores({
+  // "id" primary key, "doi" & "savedAt" di-index karena sering dipakai untuk query/cek duplikat/urutan
+  references: "id, doi, savedAt",
+})
+
+// --- Validasi & sanitasi skema minimal ---
+// Dipakai saat baca dari DB maupun saat import file, supaya entry yang bentuknya
+// tidak sesuai di-skip (bukan bikin seluruh app crash).
 const isValidEntry = (item) => {
   return (
     item &&
@@ -30,58 +43,69 @@ const sanitizeEntry = (item) => ({
   savedAt: item.savedAt ?? new Date().toISOString(),
 })
 
-const readRaw = () => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter(isValidEntry)
-  } catch {
-    // data korup / bukan JSON valid -> anggap kosong, jangan crash app
-    return []
-  }
+export const getLibrary = async () => {
+  const items = await db.references.orderBy("savedAt").reverse().toArray()
+  return items.filter(isValidEntry)
 }
 
-const writeRaw = (items) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
-    return true
-  } catch {
-    // kemungkinan quota localStorage penuh
-    return false
-  }
-}
-
-export const getLibrary = () => readRaw()
-
-export const isInLibrary = (doi) => {
+export const isInLibrary = async (doi) => {
   if (!doi) return false
-  return readRaw().some(item => item.doi === doi)
+  const count = await db.references.where("doi").equals(doi).count()
+  return count > 0
 }
 
-export const saveToLibrary = (metadata) => {
-  const items = readRaw()
-  // hindari duplikat berdasarkan DOI (kalau ada)
-  if (metadata.doi && items.some(item => item.doi === metadata.doi)) {
-    return { ok: false, reason: "duplicate" }
+// Batch version — jauh lebih cepat daripada memanggil isInLibrary() satu-satu
+// dalam loop (mis. untuk menandai status "Tersimpan" di hasil batch search).
+export const getSavedDois = async () => {
+  const items = await db.references.toArray()
+  return new Set(items.map(i => i.doi).filter(Boolean))
+}
+
+export const saveToLibrary = async (metadata) => {
+  if (metadata.doi) {
+    const existing = await db.references.where("doi").equals(metadata.doi).count()
+    if (existing > 0) return { ok: false, reason: "duplicate" }
   }
   const entry = sanitizeEntry({
     ...metadata,
     id: crypto.randomUUID(),
     savedAt: new Date().toISOString(),
   })
-  const next = [entry, ...items]
-  const ok = writeRaw(next)
-  return { ok, reason: ok ? null : "storage_full" }
+  try {
+    await db.references.add(entry)
+    return { ok: true, reason: null }
+  } catch {
+    return { ok: false, reason: "storage_full" }
+  }
 }
 
-export const removeFromLibrary = (id) => {
-  const items = readRaw().filter(item => item.id !== id)
-  return writeRaw(items)
+export const removeFromLibrary = async (id) => {
+  try {
+    await db.references.delete(id)
+    return true
+  } catch {
+    return false
+  }
 }
 
-export const clearLibrary = () => writeRaw([])
+// Hapus banyak sekaligus (dipakai tombol "Hapus yang Dipilih")
+export const removeManyFromLibrary = async (ids) => {
+  try {
+    await db.references.bulkDelete(ids)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export const clearLibrary = async () => {
+  try {
+    await db.references.clear()
+    return true
+  } catch {
+    return false
+  }
+}
 
 // --- Export ---
 
@@ -112,11 +136,6 @@ export const toBibtex = (item) => {
   return `@${type}{${key},\n${body}\n}`
 }
 
-export const exportLibraryAsBibtex = () => {
-  const items = readRaw()
-  return items.map(toBibtex).join("\n\n")
-}
-
 export const toRis = (item) => {
   const type = item.type === "book" || item.type === "edited-book" ? "BOOK" : "JOUR"
   const lines = [`TY  - ${type}`]
@@ -135,18 +154,30 @@ export const toRis = (item) => {
   return lines.join("\n")
 }
 
-export const exportLibraryAsRis = () => {
-  const items = readRaw()
+const resolveExportItems = async (ids) => {
+  if (!ids) return getLibrary()
+  const items = await db.references.bulkGet(ids)
+  return items.filter(Boolean)
+}
+
+export const exportLibraryAsBibtex = async (ids = null) => {
+  const items = await resolveExportItems(ids)
+  return items.map(toBibtex).join("\n\n")
+}
+
+export const exportLibraryAsRis = async (ids = null) => {
+  const items = await resolveExportItems(ids)
   return items.map(toRis).join("\n\n")
 }
 
-export const exportLibraryAsJson = () => {
-  return JSON.stringify(readRaw(), null, 2)
+export const exportLibraryAsJson = async (ids = null) => {
+  const items = await resolveExportItems(ids)
+  return JSON.stringify(items, null, 2)
 }
 
 // --- Import ---
 // Mengembalikan { added, skipped, duplicates } supaya UI bisa kasih feedback jelas.
-export const importLibraryFromJson = (jsonText) => {
+export const importLibraryFromJson = async (jsonText) => {
   let parsed
   try {
     parsed = JSON.parse(jsonText)
@@ -157,11 +188,10 @@ export const importLibraryFromJson = (jsonText) => {
     return { ok: false, error: "Format JSON tidak sesuai (harus berupa array referensi)." }
   }
 
-  const existing = readRaw()
-  const existingDois = new Set(existing.map(i => i.doi).filter(Boolean))
+  const existingDois = await getSavedDois()
   let added = 0, skipped = 0, duplicates = 0
-
   const toAdd = []
+
   for (const raw of parsed) {
     if (!isValidEntry({ ...raw, id: raw?.id ?? "tmp" })) { skipped++; continue }
     if (raw.doi && existingDois.has(raw.doi)) { duplicates++; continue }
@@ -170,6 +200,10 @@ export const importLibraryFromJson = (jsonText) => {
     added++
   }
 
-  const ok = writeRaw([...toAdd, ...existing])
-  return { ok, added, skipped, duplicates }
+  try {
+    await db.references.bulkAdd(toAdd)
+    return { ok: true, added, skipped, duplicates }
+  } catch {
+    return { ok: false, error: "Gagal menulis ke penyimpanan lokal." }
+  }
 }

@@ -1,8 +1,9 @@
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect, useMemo } from "react"
 import {
-  getLibrary, removeFromLibrary, exportLibraryAsBibtex,
+  getLibrary, removeFromLibrary, removeManyFromLibrary, exportLibraryAsBibtex,
   exportLibraryAsRis, exportLibraryAsJson, importLibraryFromJson,
 } from "../lib/storage"
+import ReferenceDetail from "./ReferenceDetail"
 
 const downloadFile = (filename, content, mime = "text/plain") => {
   const blob = new Blob([content], { type: mime })
@@ -14,16 +15,89 @@ const downloadFile = (filename, content, mime = "text/plain") => {
   URL.revokeObjectURL(url)
 }
 
+const dateKey = (isoString) => (isoString || "").slice(0, 10) // "2026-09-14"
+
+const dateLabel = (key) => {
+  if (!key) return "Tanggal tidak diketahui"
+  const d = new Date(`${key}T00:00:00`)
+  return d.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
+}
+
 export default function LibraryPanel() {
-  const [items, setItems] = useState(() => getLibrary())
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [selectedIds, setSelectedIds] = useState(() => new Set())
+  const [openItem, setOpenItem] = useState(null)
   const [importMsg, setImportMsg] = useState("")
   const fileInputRef = useRef(null)
 
-  const refresh = () => setItems(getLibrary())
+  const refresh = async () => {
+    setItems(await getLibrary())
+  }
 
-  const handleRemove = (id) => {
-    removeFromLibrary(id)
-    refresh()
+  useEffect(() => {
+    let cancelled = false
+    getLibrary().then(data => {
+      if (!cancelled) {
+        setItems(data)
+        setLoading(false)
+      }
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  // kelompokkan item berdasarkan tanggal disimpan, urutan terbaru dulu
+  const groups = useMemo(() => {
+    const map = new Map()
+    for (const item of items) {
+      const key = dateKey(item.savedAt)
+      if (!map.has(key)) map.set(key, [])
+      map.get(key).push(item)
+    }
+    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]))
+  }, [items])
+
+  const allIds = useMemo(() => items.map(i => i.id), [items])
+  const allSelected = allIds.length > 0 && allIds.every(id => selectedIds.has(id))
+
+  const toggleOne = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleGroup = (groupIds) => {
+    const groupAllSelected = groupIds.every(id => selectedIds.has(id))
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      for (const id of groupIds) {
+        if (groupAllSelected) next.delete(id)
+        else next.add(id)
+      }
+      return next
+    })
+  }
+
+  const toggleAll = () => {
+    setSelectedIds(allSelected ? new Set() : new Set(allIds))
+  }
+
+  const handleRemove = async (id, e) => {
+    e.stopPropagation()
+    await removeFromLibrary(id)
+    setSelectedIds(prev => { const next = new Set(prev); next.delete(id); return next })
+    await refresh()
+  }
+
+  const handleRemoveSelected = async () => {
+    if (selectedIds.size === 0) return
+    if (!window.confirm(`Hapus ${selectedIds.size} referensi terpilih dari Library? Tindakan ini tidak bisa dibatalkan.`)) return
+    await removeManyFromLibrary([...selectedIds])
+    setSelectedIds(new Set())
+    await refresh()
   }
 
   const handleImportClick = () => fileInputRef.current?.click()
@@ -32,14 +106,37 @@ export default function LibraryPanel() {
     const file = e.target.files?.[0]
     if (!file) return
     const text = await file.text()
-    const result = importLibraryFromJson(text)
+    const result = await importLibraryFromJson(text)
     if (!result.ok) {
       setImportMsg(result.error || "Gagal mengimpor file.")
     } else {
       setImportMsg(`Berhasil: ${result.added} ditambahkan, ${result.duplicates} duplikat dilewati, ${result.skipped} tidak valid.`)
-      refresh()
+      await refresh()
     }
     e.target.value = ""
+  }
+
+  const exportIds = selectedIds.size > 0 ? [...selectedIds] : null
+  const exportCountLabel = selectedIds.size > 0 ? `${selectedIds.size} terpilih` : "semua"
+
+  if (openItem) {
+    return (
+      <ReferenceDetail
+        key={openItem.id}
+        metadata={openItem}
+        onBack={() => setOpenItem(null)}
+        onDelete={async () => {
+          await removeFromLibrary(openItem.id)
+          setSelectedIds(prev => { const next = new Set(prev); next.delete(openItem.id); return next })
+          await refresh()
+          setOpenItem(null)
+        }}
+      />
+    )
+  }
+
+  if (loading) {
+    return <div className="card library-empty"><p>Memuat library...</p></div>
   }
 
   if (items.length === 0) {
@@ -58,31 +155,68 @@ export default function LibraryPanel() {
   return (
     <div className="library-panel">
       <div className="library-toolbar">
-        <p className="library-count">{items.length} referensi tersimpan</p>
+        <div className="library-toolbar-left">
+          <label className="checkbox-label">
+            <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+            <span>Pilih Semua ({items.length})</span>
+          </label>
+          <p className="library-count">Ekspor: {exportCountLabel}</p>
+        </div>
         <div className="library-actions">
-          <button className="link-pill" onClick={() => downloadFile("library.bib", exportLibraryAsBibtex())}>Ekspor .bib</button>
-          <button className="link-pill" onClick={() => downloadFile("library.ris", exportLibraryAsRis())}>Ekspor .ris</button>
-          <button className="link-pill" onClick={() => downloadFile("library.json", exportLibraryAsJson(), "application/json")}>Ekspor .json</button>
+          {selectedIds.size > 0 && (
+            <button className="link-pill link-pill-danger" onClick={handleRemoveSelected}>
+              Hapus yang Dipilih ({selectedIds.size})
+            </button>
+          )}
+          <button className="link-pill" onClick={async () => downloadFile("library.bib", await exportLibraryAsBibtex(exportIds))}>Ekspor .bib</button>
+          <button className="link-pill" onClick={async () => downloadFile("library.ris", await exportLibraryAsRis(exportIds))}>Ekspor .ris</button>
+          <button className="link-pill" onClick={async () => downloadFile("library.json", await exportLibraryAsJson(exportIds), "application/json")}>Ekspor .json</button>
           <button className="link-pill" onClick={handleImportClick}>Impor .json</button>
           <input ref={fileInputRef} type="file" accept="application/json" hidden onChange={handleFileChange} />
         </div>
       </div>
       {importMsg && <p className="import-msg">{importMsg}</p>}
-      <ul className="library-list">
-        {items.map(item => (
-          <li key={item.id} className="library-item">
-            <div>
-              <p className="library-item-title">{item.title}</p>
-              <p className="library-item-meta">
-                {(item.authors || []).join(", ")}
-                {item.year ? ` · ${item.year}` : ""}
-                {item.journal ? ` · ${item.journal}` : ""}
-              </p>
+
+      {groups.map(([key, groupItems]) => {
+        const groupIds = groupItems.map(i => i.id)
+        const groupAllSelected = groupIds.every(id => selectedIds.has(id))
+        return (
+          <div key={key} className="date-group">
+            <div className="date-group-header">
+              <label className="checkbox-label">
+                <input type="checkbox" checked={groupAllSelected} onChange={() => toggleGroup(groupIds)} />
+                <span>{dateLabel(key)}</span>
+              </label>
+              <span className="date-group-count">{groupItems.length} referensi</span>
             </div>
-            <button className="remove-btn" onClick={() => handleRemove(item.id)} aria-label="Hapus">✕</button>
-          </li>
-        ))}
-      </ul>
+            <ul className="library-list">
+              {groupItems.map(item => (
+                <li
+                  key={item.id}
+                  className={`library-item ${selectedIds.has(item.id) ? "selected" : ""}`}
+                  onClick={() => setOpenItem(item)}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(item.id)}
+                    onClick={e => e.stopPropagation()}
+                    onChange={() => toggleOne(item.id)}
+                  />
+                  <div className="library-item-main">
+                    <p className="library-item-title">{item.title}</p>
+                    <p className="library-item-meta">
+                      {(item.authors || []).join(", ")}
+                      {item.year ? ` · ${item.year}` : ""}
+                      {item.journal ? ` · ${item.journal}` : ""}
+                    </p>
+                  </div>
+                  <button className="remove-btn" onClick={(e) => handleRemove(item.id, e)} aria-label="Hapus">✕</button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      })}
     </div>
   )
 }
