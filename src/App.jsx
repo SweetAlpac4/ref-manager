@@ -85,6 +85,13 @@ export default function App() {
     setBatchResults(null); setBatchProgress(null)
   }
 
+  const switchTab = (t) => {
+    requestToken.current++ // batalkan request yang masih jalan sebelum pindah tab
+    setTab(t)
+    setStatus("idle")
+    setBatchProgress(null)
+  }
+
   const hasResult = status === "success" && metadata
   const batchLineCount = parseBatchInput(batchInput).length
 
@@ -98,8 +105,8 @@ export default function App() {
         </header>
 
         <div className="top-tabs">
-          <button className={`top-tab ${tab === "search" ? "active" : ""}`} onClick={() => setTab("search")}>Cari</button>
-          <button className={`top-tab ${tab === "library" ? "active" : ""}`} onClick={() => setTab("library")}>Library</button>
+          <button className={`top-tab ${tab === "search" ? "active" : ""}`} onClick={() => switchTab("search")}>Cari</button>
+          <button className={`top-tab ${tab === "library" ? "active" : ""}`} onClick={() => switchTab("library")}>Library</button>
         </div>
 
         {tab === "search" && (

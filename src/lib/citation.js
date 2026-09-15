@@ -14,11 +14,20 @@ export const initCitationStyles = () => {
   if (initialized) return Promise.resolve()
   if (initPromise) return initPromise
   initPromise = (async () => {
-    for (const [name, url] of Object.entries(CSL_URLS)) {
-      const csl = await fetch(url).then(r => r.text())
-      plugins.config.get('@csl').templates.add(name, csl)
+    try {
+      for (const [name, url] of Object.entries(CSL_URLS)) {
+        const response = await fetch(url)
+        if (!response.ok) throw new Error(`Gagal mengambil gaya sitasi: ${name}`)
+        const csl = await response.text()
+        plugins.config.get('@csl').templates.add(name, csl)
+      }
+      initialized = true
+    } catch (error) {
+      // reset supaya panggilan berikutnya bisa coba ulang, bukan nyangkut
+      // di rejected promise yang sama selamanya
+      initPromise = null
+      throw error
     }
-    initialized = true
   })()
   return initPromise
 }

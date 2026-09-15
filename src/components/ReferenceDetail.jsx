@@ -15,8 +15,13 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
   const [copied, setCopied] = useState(false)
   const [saved, setSaved] = useState(false)
   const [stylesReady, setStylesReady] = useState(false)
+  const [stylesError, setStylesError] = useState(false)
 
-  useEffect(() => { initCitationStyles().then(() => setStylesReady(true)) }, [])
+  useEffect(() => {
+    initCitationStyles()
+      .then(() => setStylesReady(true))
+      .catch(() => setStylesError(true))
+  }, [])
 
   useEffect(() => {
     isInLibrary(initialMetadata?.doi).then(setSaved)
@@ -35,10 +40,18 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
 
   const citation = useMemo(() => {
     if (!metadata) return ""
+    if (stylesError) return "Gagal memuat gaya sitasi (periksa koneksi internet)."
     if (!stylesReady) return "Memuat gaya sitasi..."
     try { return formatCitation(metadata, selectedStyle) }
     catch { return "Gagal memformat sitasi." }
-  }, [metadata, selectedStyle, stylesReady])
+  }, [metadata, selectedStyle, stylesReady, stylesError])
+
+  const handleRetryStyles = () => {
+    setStylesError(false)
+    initCitationStyles()
+      .then(() => setStylesReady(true))
+      .catch(() => setStylesError(true))
+  }
 
   const handleCopy = () => {
     navigator.clipboard.writeText(citation)
@@ -143,6 +156,9 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
               </button>
             </div>
             <p className="citation-text">{citation}</p>
+            {stylesError && (
+              <button className="link-pill" onClick={handleRetryStyles}>Coba Lagi</button>
+            )}
           </div>
         </div>
 

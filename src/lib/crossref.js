@@ -37,6 +37,10 @@ const parseCrossRef = (data) => {
   const rawNames = structuredAuthors.map(({ given, family }) => `${given} ${family}`.trim())
   const displayAuthors = isEditor ? rawNames.map(n => `${n} (Ed.)`) : rawNames
 
+  // PENTING: jangan String(x) langsung kalau x bisa null/undefined —
+  // String(null) menghasilkan string literal "null" (truthy!), bukan null beneran.
+  const year = data.published?.['date-parts']?.[0]?.[0]
+
   return {
     title: normalizeText((data.title || [null])[0]),
     authors: displayAuthors,
@@ -45,7 +49,7 @@ const parseCrossRef = (data) => {
     journal: isBook
       ? (data.publisher || null)
       : normalizeText((data['container-title'] || [null])[0]),
-    year: String((data.published?.['date-parts'] || [[null]])[0][0]),
+    year: year ? String(year) : null,
     volume: data.volume || null,
     issue: data.issue || null,
     pages: data.page || null,
@@ -57,6 +61,20 @@ const parseCrossRef = (data) => {
     thumbnail: null,
     pdfUrl: null,
   }
+}
+
+// DataCite pakai field types.resourceTypeGeneral untuk kategori resource.
+// Sebelumnya field ini dibuang sama sekali dan semua hasil DataCite (termasuk
+// tesis, dataset, laporan, prosiding) dianggap 'article-journal' begitu saja.
+const DATACITE_TYPE_MAP = {
+  JournalArticle: 'journal-article',
+  ConferencePaper: 'proceedings-article',
+  ConferenceProceeding: 'proceedings-article',
+  BookChapter: 'book-chapter',
+  Book: 'book',
+  Report: 'report',
+  Dissertation: 'dissertation',
+  Preprint: 'posted-content',
 }
 
 const parseDataCite = (data) => {
@@ -74,6 +92,7 @@ const parseDataCite = (data) => {
   const authors = structuredAuthors
     .map(({ given, family }) => `${given} ${family}`.trim())
     .filter(Boolean)
+  const resourceType = data.types?.resourceTypeGeneral
   return {
     title: normalizeText((data.titles || [{}])[0]?.title),
     authors,
@@ -85,7 +104,7 @@ const parseDataCite = (data) => {
     issue: null,
     pages: null,
     doi: data.doi || null,
-    type: 'article-journal',
+    type: DATACITE_TYPE_MAP[resourceType] || 'article-journal',
     isbn: null,
     abstract: null,
     tldr: null,
@@ -99,7 +118,7 @@ const parseDataCite = (data) => {
 // terlepas dari bagaimana pun cara menulis kodenya. Jangan pakai email pribadi asli
 // di sini — pakai alias yang aman dipublikasikan, misalnya email noreply GitHub
 // (aktifkan di GitHub Settings > Emails, formatnya <username>@users.noreply.github.com).
-const UNPAYWALL_CONTACT_EMAIL = "alpaca_dummy_email@gmail.com"
+const UNPAYWALL_CONTACT_EMAIL = "nabiltsad@gmail.com"
 
 export const lookupOpenAccessPdf = async (doi) => {
   if (!doi) return null
