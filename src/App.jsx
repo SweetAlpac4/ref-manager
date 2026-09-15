@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { lookupDOI, searchByTitle } from "./lib/crossref"
 import { parseBatchInput, runBatchSearch, MAX_BATCH_ITEMS } from "./lib/batch"
 import BatchResults from "./components/BatchResults"
@@ -19,8 +19,13 @@ export default function App() {
   const [batchProgress, setBatchProgress] = useState(null) // {done, total, current}
   const [batchResults, setBatchResults] = useState(null)
 
+  // Token untuk menolak hasil dari request lama yang baru resolve belakangan
+  // (mis. user ganti mode/input sebelum request sebelumnya selesai).
+  const requestToken = useRef(0)
+
   const handleSearch = async () => {
     if (!input.trim()) return
+    const token = ++requestToken.current
     setStatus("loading")
     setMetadata(null)
     setErrorMsg("")
@@ -29,6 +34,8 @@ export default function App() {
       const result = mode === "doi"
         ? await lookupDOI(input.trim())
         : await searchByTitle(input.trim())
+
+      if (token !== requestToken.current) return // request lama, ada request/mode baru menyusul
 
       if (!result) {
         setErrorMsg(mode === "doi"
@@ -42,6 +49,7 @@ export default function App() {
       setMetadata(result.data)
       setStatus("success")
     } catch {
+      if (token !== requestToken.current) return
       setErrorMsg("Terjadi kesalahan. Periksa koneksi internet dan coba lagi.")
       setStatus("error")
     }
@@ -50,12 +58,17 @@ export default function App() {
   const handleBatchSearch = async () => {
     const lines = parseBatchInput(batchInput)
     if (lines.length === 0) return
+    const token = ++requestToken.current
 
     setStatus("loading")
     setBatchResults(null)
     setBatchProgress({ done: 0, total: lines.length, current: lines[0] })
 
-    const results = await runBatchSearch(lines, setBatchProgress)
+    const results = await runBatchSearch(lines, (p) => {
+      if (token === requestToken.current) setBatchProgress(p)
+    })
+
+    if (token !== requestToken.current) return // user sudah pindah mode/tab, buang hasilnya
 
     setBatchResults(results)
     setBatchProgress(null)
@@ -65,6 +78,7 @@ export default function App() {
   const handleKeyDown = (e) => { if (e.key === "Enter" && mode !== "batch") handleSearch() }
 
   const switchMode = (m) => {
+    requestToken.current++ // batalkan request yang masih jalan dari mode sebelumnya
     setMode(m)
     setInput(""); setBatchInput("")
     setStatus("idle"); setMetadata(null)

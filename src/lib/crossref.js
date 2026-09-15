@@ -30,13 +30,18 @@ const parseCrossRef = (data) => {
   const people = authorList.length ? authorList : editorList
   const isEditor = !authorList.length && editorList.length > 0
 
-  const rawNames = people.map(a => `${a.given || ''} ${a.family || ''}`.trim())
+  // Simpan given/family terstruktur apa adanya dari CrossRef, jangan cuma
+  // gabung jadi satu string lalu ditebak ulang belakangan (rawan salah untuk
+  // nama dengan partikel seperti "van der Berg" atau suffix seperti "Jr.").
+  const structuredAuthors = people.map(a => ({ given: a.given || '', family: a.family || '' }))
+  const rawNames = structuredAuthors.map(({ given, family }) => `${given} ${family}`.trim())
   const displayAuthors = isEditor ? rawNames.map(n => `${n} (Ed.)`) : rawNames
 
   return {
     title: normalizeText((data.title || [null])[0]),
     authors: displayAuthors,
     citationAuthors: rawNames,
+    authorsStructured: structuredAuthors,
     journal: isBook
       ? (data.publisher || null)
       : normalizeText((data['container-title'] || [null])[0]),
@@ -56,15 +61,24 @@ const parseCrossRef = (data) => {
 
 const parseDataCite = (data) => {
   const creators = data.creators || []
-  const authors = creators.map(c => {
-    const given = c.givenName || ''
-    const family = c.familyName || ''
-    return given && family ? `${given} ${family}` : (c.name || '').trim()
-  }).filter(Boolean)
+  const structuredAuthors = creators.map(c => {
+    if (c.givenName || c.familyName) {
+      return { given: c.givenName || '', family: c.familyName || '' }
+    }
+    // DataCite kadang cuma kasih "name" polos tanpa given/family terpisah;
+    // ini satu-satunya kasus kita terpaksa nebak, tapi minimal jelas fallback-nya.
+    const parts = (c.name || '').trim().split(' ')
+    const family = parts.pop() || ''
+    return { given: parts.join(' '), family }
+  })
+  const authors = structuredAuthors
+    .map(({ given, family }) => `${given} ${family}`.trim())
+    .filter(Boolean)
   return {
     title: normalizeText((data.titles || [{}])[0]?.title),
     authors,
     citationAuthors: authors,
+    authorsStructured: structuredAuthors,
     journal: data.publisher || null,
     year: data.publicationYear ? String(data.publicationYear) : null,
     volume: null,
@@ -79,12 +93,18 @@ const parseDataCite = (data) => {
   }
 }
 
+// Unpaywall API mewajibkan parameter email untuk identifikasi klien.
+// PENTING: karena app ini frontend-only (ga ada backend buat nyembunyiin request),
+// alamat ini akan SELALU terlihat oleh siapa pun yang buka tab Network di DevTools,
+// terlepas dari bagaimana pun cara menulis kodenya. Jangan pakai email pribadi asli
+// di sini — pakai alias yang aman dipublikasikan, misalnya email noreply GitHub
+// (aktifkan di GitHub Settings > Emails, formatnya <username>@users.noreply.github.com).
+const UNPAYWALL_CONTACT_EMAIL = "alpaca_dummy_email@gmail.com"
+
 export const lookupOpenAccessPdf = async (doi) => {
   if (!doi) return null
   try {
-    // Ganti email ini ke kontak project kamu sendiri sebelum deploy —
-    // Unpaywall mewajibkan parameter email untuk identifikasi klien API.
-    const r = await fetch(`https://api.unpaywall.org/v2/${encodeURIComponent(doi)}?email=nabiltsad@gmail.com`)
+    const r = await fetch(`https://api.unpaywall.org/v2/${encodeURIComponent(doi)}?email=${encodeURIComponent(UNPAYWALL_CONTACT_EMAIL)}`)
     if (!r.ok) return null
     const data = await r.json()
     if (!data.is_oa) return null

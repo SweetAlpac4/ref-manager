@@ -31,6 +31,7 @@ const sanitizeEntry = (item) => ({
   title: item.title,
   authors: Array.isArray(item.citationAuthors) ? item.citationAuthors : (item.authors || []),
   citationAuthors: Array.isArray(item.citationAuthors) ? item.citationAuthors : (item.authors || []),
+  authorsStructured: Array.isArray(item.authorsStructured) ? item.authorsStructured : null,
   journal: item.journal ?? null,
   year: item.year ?? null,
   volume: item.volume ?? null,
@@ -111,19 +112,56 @@ export const clearLibrary = async () => {
 
 const escapeBibtex = (str) => (str || "").replace(/[{}]/g, "")
 
+// CrossRef/DataCite pakai banyak istilah 'type' (journal-article, proceedings-article,
+// book-chapter, dst) — sebelumnya semua disederhanakan jadi article/book saja, padahal
+// BibTeX & RIS punya entry type yang lebih tepat untuk masing-masing.
+const BIBTEX_TYPE_MAP = {
+  'journal-article': 'article',
+  'proceedings-article': 'inproceedings',
+  'book-chapter': 'incollection',
+  'book': 'book',
+  'monograph': 'book',
+  'edited-book': 'book',
+  'reference-book': 'book',
+  'report': 'techreport',
+  'dissertation': 'phdthesis',
+  'posted-content': 'misc',
+}
+
+const RIS_TYPE_MAP = {
+  'journal-article': 'JOUR',
+  'proceedings-article': 'CPAPER',
+  'book-chapter': 'CHAP',
+  'book': 'BOOK',
+  'monograph': 'BOOK',
+  'edited-book': 'BOOK',
+  'reference-book': 'BOOK',
+  'report': 'RPRT',
+  'dissertation': 'THES',
+  'posted-content': 'GEN',
+}
+
 const bibtexKey = (item) => {
   const firstAuthor = (item.citationAuthors?.[0] || item.authors?.[0] || "unknown").split(" ").pop()
   return `${firstAuthor}${item.year || ""}`.replace(/[^a-zA-Z0-9]/g, "")
 }
 
-export const toBibtex = (item) => {
-  const key = bibtexKey(item)
+export const toBibtex = (item, keyOverride = null) => {
+  const key = keyOverride || bibtexKey(item)
   const authors = (item.citationAuthors || item.authors || []).join(" and ")
-  const type = item.type === "book" || item.type === "edited-book" ? "book" : "article"
+  const type = BIBTEX_TYPE_MAP[item.type] || "article"
+
+  // field "container" beda nama tergantung jenis (journal / booktitle / institution / publisher)
+  const containerField = type === "inproceedings" || type === "incollection"
+    ? "booktitle"
+    : type === "techreport" ? "institution"
+    : type === "book" ? "publisher"
+    : "journal"
+
   const fields = [
     ["title", item.title],
     ["author", authors],
-    [type === "book" ? "publisher" : "journal", item.journal],
+    [containerField, item.journal],
     ["year", item.year],
     ["volume", item.volume],
     ["number", item.issue],
@@ -137,13 +175,19 @@ export const toBibtex = (item) => {
 }
 
 export const toRis = (item) => {
-  const type = item.type === "book" || item.type === "edited-book" ? "BOOK" : "JOUR"
+  const type = RIS_TYPE_MAP[item.type] || "JOUR"
   const lines = [`TY  - ${type}`]
   for (const author of (item.citationAuthors || item.authors || [])) {
     lines.push(`AU  - ${author}`)
   }
   if (item.title) lines.push(`TI  - ${item.title}`)
-  if (item.journal) lines.push(`${type === "BOOK" ? "PB" : "JO"}  - ${item.journal}`)
+  if (item.journal) {
+    // JO untuk jurnal, PB untuk penerbit (buku/laporan), T2 untuk judul induk (prosiding/bab buku)
+    const containerCode = type === "JOUR" ? "JO"
+      : (type === "BOOK" || type === "RPRT") ? "PB"
+      : "T2"
+    lines.push(`${containerCode}  - ${item.journal}`)
+  }
   if (item.year) lines.push(`PY  - ${item.year}`)
   if (item.volume) lines.push(`VL  - ${item.volume}`)
   if (item.issue) lines.push(`IS  - ${item.issue}`)
@@ -162,7 +206,18 @@ const resolveExportItems = async (ids) => {
 
 export const exportLibraryAsBibtex = async (ids = null) => {
   const items = await resolveExportItems(ids)
-  return items.map(toBibtex).join("\n\n")
+  const usedKeys = new Set()
+  return items.map(item => {
+    const baseKey = bibtexKey(item)
+    let key = baseKey
+    let suffixCode = 0
+    while (usedKeys.has(key)) {
+      key = baseKey + String.fromCharCode(97 + suffixCode) // a, b, c, ...
+      suffixCode++
+    }
+    usedKeys.add(key)
+    return toBibtex(item, key)
+  }).join("\n\n")
 }
 
 export const exportLibraryAsRis = async (ids = null) => {

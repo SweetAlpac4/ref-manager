@@ -14,8 +14,9 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
   const [selectedStyle, setSelectedStyle] = useState("ieee")
   const [copied, setCopied] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [stylesReady, setStylesReady] = useState(false)
 
-  useEffect(() => { initCitationStyles() }, [])
+  useEffect(() => { initCitationStyles().then(() => setStylesReady(true)) }, [])
 
   useEffect(() => {
     isInLibrary(initialMetadata?.doi).then(setSaved)
@@ -34,9 +35,10 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
 
   const citation = useMemo(() => {
     if (!metadata) return ""
+    if (!stylesReady) return "Memuat gaya sitasi..."
     try { return formatCitation(metadata, selectedStyle) }
     catch { return "Gagal memformat sitasi." }
-  }, [metadata, selectedStyle])
+  }, [metadata, selectedStyle, stylesReady])
 
   const handleCopy = () => {
     navigator.clipboard.writeText(citation)
@@ -44,14 +46,14 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
     setTimeout(() => setCopied(false), 2000)
   }
 
-const handleSave = async () => {
-  if (!metadata) return
-  const res = await saveToLibrary(metadata)
-  if (res.ok || res.reason === "duplicate") {
-    setSaved(true)
-    onSaveChange?.()
+  const handleSave = async () => {
+    if (!metadata) return
+    const res = await saveToLibrary(metadata)
+    if (res.ok || res.reason === "duplicate") {
+      setSaved(true)
+      onSaveChange?.()
+    }
   }
-}
 
   if (!metadata) return null
 

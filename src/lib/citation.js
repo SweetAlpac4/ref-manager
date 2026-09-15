@@ -8,25 +8,36 @@ const CSL_URLS = {
 }
 
 let initialized = false
+let initPromise = null
 
-export const initCitationStyles = async () => {
-  if (initialized) return
-  for (const [name, url] of Object.entries(CSL_URLS)) {
-    const csl = await fetch(url).then(r => r.text())
-    plugins.config.get('@csl').templates.add(name, csl)
-  }
-  initialized = true
+export const initCitationStyles = () => {
+  if (initialized) return Promise.resolve()
+  if (initPromise) return initPromise
+  initPromise = (async () => {
+    for (const [name, url] of Object.entries(CSL_URLS)) {
+      const csl = await fetch(url).then(r => r.text())
+      plugins.config.get('@csl').templates.add(name, csl)
+    }
+    initialized = true
+  })()
+  return initPromise
 }
+
+export const areCitationStylesReady = () => initialized
 
 const toCSLInput = (meta) => ({
   type: meta.type || 'article-journal',
   title: meta.title,
-  author: (meta.citationAuthors || meta.authors).map(name => {
-    const parts = name.split(' ')
-    const family = parts.pop()
-    const given = parts.join(' ')
-    return { given, family }
-  }),
+  author: meta.authorsStructured?.length
+    ? meta.authorsStructured
+    : (meta.citationAuthors || meta.authors).map(name => {
+        // fallback untuk data lama (sebelum authorsStructured ada) — tetap rawan
+        // salah untuk nama dengan partikel/suffix, tapi hanya jalan sebagai jaring pengaman
+        const parts = name.split(' ')
+        const family = parts.pop()
+        const given = parts.join(' ')
+        return { given, family }
+      }),
   'container-title': meta.journal,
   issued: { 'date-parts': [[parseInt(meta.year)]] },
   volume: meta.volume,
