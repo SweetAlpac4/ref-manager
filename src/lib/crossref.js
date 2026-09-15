@@ -75,6 +75,8 @@ const DATACITE_TYPE_MAP = {
   Report: 'report',
   Dissertation: 'dissertation',
   Preprint: 'posted-content',
+  Dataset: 'dataset',
+  Software: 'software',
 }
 
 const parseDataCite = (data) => {
@@ -93,6 +95,12 @@ const parseDataCite = (data) => {
     .map(({ given, family }) => `${given} ${family}`.trim())
     .filter(Boolean)
   const resourceType = data.types?.resourceTypeGeneral
+  // Kalau resourceType ADA tapi ga ada di map (mis. Image, Workflow, Sound),
+  // jangan diam-diam disebut 'article-journal' — pakai 'other' yang jujur.
+  // 'article-journal' cuma dipakai kalau memang DataCite ga kasih info tipe sama sekali.
+  const type = resourceType
+    ? (DATACITE_TYPE_MAP[resourceType] || 'other')
+    : 'article-journal'
   return {
     title: normalizeText((data.titles || [{}])[0]?.title),
     authors,
@@ -104,7 +112,7 @@ const parseDataCite = (data) => {
     issue: null,
     pages: null,
     doi: data.doi || null,
-    type: DATACITE_TYPE_MAP[resourceType] || 'article-journal',
+    type,
     isbn: null,
     abstract: null,
     tldr: null,

@@ -126,6 +126,9 @@ const BIBTEX_TYPE_MAP = {
   'report': 'techreport',
   'dissertation': 'phdthesis',
   'posted-content': 'misc',
+  'dataset': 'misc',
+  'software': 'misc',
+  'other': 'misc',
 }
 
 const RIS_TYPE_MAP = {
@@ -139,6 +142,9 @@ const RIS_TYPE_MAP = {
   'report': 'RPRT',
   'dissertation': 'THES',
   'posted-content': 'GEN',
+  'dataset': 'DATA',
+  'software': 'COMP',
+  'other': 'GEN',
 }
 
 const bibtexKey = (item) => {
