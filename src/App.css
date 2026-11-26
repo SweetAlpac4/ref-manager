@@ -49,12 +49,29 @@ body {
 }
 
 .logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
   font-family: 'JetBrains Mono', monospace;
   font-size: 2rem;
   font-weight: 600;
   letter-spacing: -0.03em;
   line-height: 1;
   margin-bottom: 0.5rem;
+}
+
+.logo-mark {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 10px;
+  display: block;
+  flex-shrink: 0;
+}
+
+.logo-word {
+  display: inline-flex;
+  align-items: baseline;
 }
 
 .logo-rose { color: var(--rose); }
