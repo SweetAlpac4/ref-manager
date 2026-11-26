@@ -100,10 +100,7 @@ export default function App() {
       <div className="container">
 
         <header className="header">
-          <div className="logo">
-            <img className="logo-mark" src="/logo.svg" alt="" width="40" height="40" />
-            <span className="logo-word"><span className="logo-rose">ref</span><span className="logo-blue">-manager</span></span>
-          </div>
+          <div className="logo"><span className="logo-rose">ref</span><span className="logo-blue">-manager</span></div>
           <p className="tagline">Metadata jurnal lengkap, format daftar pustaka instan.</p>
         </header>
 
