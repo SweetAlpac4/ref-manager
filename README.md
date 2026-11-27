@@ -6,6 +6,12 @@ Ref Manager is a browser-based workspace for collecting references, reading and 
 
 ![Ref Manager in dark mode with three sample references, library filters, tags, and reading statuses](docs/screenshots/library-dark.png)
 
+## Feature guides
+
+- [Collect, read, and organize references](docs/research-workflow.md) covers batch search, filters, PDF search, annotations, and linked research notes.
+- [Prepare citations and send them to a document](docs/citation-workflow.md) covers citation groups, CSL, DOCX, and when to refresh or replace inserted citations.
+- [Move and back up research data](docs/data-and-backups.md) explains the export formats, browser migration, cloud copies, and common recovery steps.
+
 ## Get started
 
 1. Open **Search** and enter a DOI or paper title. **Batch** accepts up to 50 DOIs and titles, one per line. DOI lookup checks Crossref and falls back to DataCite. Title search uses Crossref. When available, Unpaywall provides an open-access link and Open Library provides a book cover.
