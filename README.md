@@ -23,11 +23,15 @@ The bibliography updates from the sources in your draft. Copy the results into W
 
 Use **Download Word document (.docx)** to export an editable draft with its citations and bibliography. You can add text before each citation under **Document text for export**. Note-based styles create native Word footnotes. The file is generated in your browser.
 
+### Insert citations in Google Docs
+
+Use **Download citation file for Google Docs** in an in-text style. Install the [document-bound Ref Manager sidebar](integrations/google-docs/README.md) in an editable Google Doc, load the exported JSON, and insert a citation at the cursor or append the bibliography. The sidebar uses plain text. For native footnotes, export a Word document.
+
 ## Back up and move your library
 
 Open **Library → Library backup** to download a JSON file containing references, collections, tags, notes, PDFs, and annotations. Restore it in another browser to move your library. When a reference already exists in the destination, the restore keeps its data and adds collection and tag memberships. The regular JSON export contains references only.
 
-Ref Manager runs without an account or a VPS. Backups can be transferred manually. Automatic sync, live collaboration, and document editor add-ins are pending. Online metadata search and fetching styles from the CSL catalog require internet access.
+Ref Manager runs without an account or a VPS. Backups can be transferred manually. Automatic sync, live collaboration, and Word and LibreOffice add-ins are pending. Online metadata search and fetching styles from the CSL catalog require internet access.
 
 ## Develop locally
 

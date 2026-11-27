@@ -122,6 +122,17 @@ export default function CitationWorkspace({ references, onBack }) {
     }
   }
 
+  const downloadCitationFile = () => {
+    const bundle = {
+      format: "ref-manager-citations",
+      version: 1,
+      style: styles.find(item => item.id === style)?.label,
+      citations: output.citations.map(citation => citation.value.trim()),
+      bibliography: output.bibliography.split(/\r?\n/).map(line => line.trim()).filter(Boolean),
+    }
+    downloadFile("ref-manager-citations.json", JSON.stringify(bundle, null, 2), "application/json")
+  }
+
   return <section className="card citation-workspace">
     <button className="back-btn" onClick={onBack}>Back to library</button>
     <h2>Citation workspace</h2>
@@ -210,6 +221,9 @@ export default function CitationWorkspace({ references, onBack }) {
       <button className="link-pill" disabled={exporting} onClick={downloadWord}>
         {exporting ? "Creating Word document…" : "Download Word document (.docx)"}
       </button>
+      {!output.noteStyle && <button className="link-pill" onClick={downloadCitationFile}>
+        Download citation file for Google Docs
+      </button>}
       <h3>Bibliography</h3>
       {output.bibliography ? <>
         <div className="citation-text bibliography-output" dangerouslySetInnerHTML={{ __html: output.htmlBibliography }} />

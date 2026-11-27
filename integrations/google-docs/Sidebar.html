@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    body { font: 14px/1.5 system-ui, sans-serif; padding: 12px; }
+    label, select, input, button { display: block; margin-block: 8px; }
+    select { width: 100%; }
+    #preview { white-space: pre-wrap; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <label for="file">Citation file from Ref Manager</label>
+  <input id="file" type="file" accept=".json,application/json">
+  <div id="actions" hidden>
+    <label for="citation">Citation</label>
+    <select id="citation"></select>
+    <p id="preview"></p>
+    <button id="insert" type="button">Insert at cursor</button>
+    <button id="bibliography" type="button">Append bibliography</button>
+  </div>
+  <p id="status" role="status"></p>
+  <script>
+    const byId = id => document.getElementById(id);
+    const feedback = byId('status');
+    const citation = byId('citation');
+    const insert = byId('insert');
+    const bibliography = byId('bibliography');
+    let bundle;
+    let revision = 0;
+    let busy = false;
+
+    function updateActions() {
+      byId('actions').hidden = !bundle;
+      insert.disabled = busy || !bundle?.citations.length;
+      bibliography.disabled = busy || !bundle?.bibliography.length;
+      byId('file').disabled = busy;
+      byId('preview').textContent = bundle?.citations[citation.selectedIndex] ?? '';
+    }
+
+    byId('file').addEventListener('change', async event => {
+      const current = ++revision;
+      const file = event.target.files[0];
+      bundle = undefined;
+      updateActions();
+      feedback.textContent = '';
+      if (!file) return;
+      try {
+        if (file.size > 5 * 1024 * 1024) throw new Error();
+        const value = JSON.parse(await file.text());
+        if (current !== revision) return;
+        if (value?.format !== 'ref-manager-citations' || value.version !== 1 ||
+            ![value.citations, value.bibliography].every(items => Array.isArray(items) &&
+              items.every(item => typeof item === 'string' && item.trim()))) throw new Error();
+        bundle = value;
+        citation.replaceChildren(...bundle.citations.map((_, index) => new Option('Citation ' + (index + 1), index)));
+        feedback.textContent = bundle.style || 'Citations loaded.';
+        updateActions();
+      } catch {
+        if (current === revision) feedback.textContent = 'Choose a valid Ref Manager citation file.';
+      }
+    });
+
+    citation.addEventListener('change', updateActions);
+
+    function callServer(success) {
+      busy = true;
+      feedback.textContent = '';
+      updateActions();
+      return google.script.run.withSuccessHandler(() => {
+        busy = false;
+        feedback.textContent = success;
+        updateActions();
+      }).withFailureHandler(error => {
+        busy = false;
+        feedback.textContent = error.message || 'Could not update the document.';
+        updateActions();
+      });
+    }
+
+    insert.addEventListener('click', () => {
+      callServer('Citation inserted.').insertCitation(bundle.citations[citation.selectedIndex]);
+    });
+    bibliography.addEventListener('click', () => {
+      callServer('Bibliography appended.').appendBibliography(bundle.bibliography);
+    });
+  </script>
+</body>
+</html>
