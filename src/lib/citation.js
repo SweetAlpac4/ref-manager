@@ -1,72 +1,91 @@
-import Cite from 'citation-js'
-import { plugins } from '@citation-js/core'
+import { Cite, plugins } from "@citation-js/core"
+import "@citation-js/plugin-csl"
+import { normalizeDoi } from "./duplicates.js"
 
-const CSL_URLS = {
-  ieee: 'https://raw.githubusercontent.com/citation-style-language/styles/master/ieee.csl',
-  harvard: 'https://raw.githubusercontent.com/citation-style-language/styles/master/harvard-cite-them-right.csl',
-  chicago: 'https://raw.githubusercontent.com/citation-style-language/styles/master/chicago-author-date.csl',
+const bundledStyles = {
+  apa: new URL("./styles/apa.csl", import.meta.url),
+  ieee: new URL("./styles/ieee.csl", import.meta.url),
+  harvard: new URL("./styles/harvard-cite-them-right.csl", import.meta.url),
+  chicago: new URL("./styles/chicago-author-date.csl", import.meta.url),
 }
 
-let initialized = false
-let initPromise = null
-
-export const initCitationStyles = () => {
-  if (initialized) return Promise.resolve()
-  if (initPromise) return initPromise
-  initPromise = (async () => {
-    try {
-      for (const [name, url] of Object.entries(CSL_URLS)) {
-        const response = await fetch(url)
-        if (!response.ok) throw new Error(`Gagal mengambil gaya sitasi: ${name}`)
-        const csl = await response.text()
-        plugins.config.get('@csl').templates.add(name, csl)
-      }
-      initialized = true
-    } catch (error) {
-      // reset supaya panggilan berikutnya bisa coba ulang, bukan nyangkut
-      // di rejected promise yang sama selamanya
-      initPromise = null
-      throw error
-    }
-  })()
-  return initPromise
+const loadStyle = async url => {
+  const response = await fetch(url)
+  if (!response.ok) throw new Error("Gagal memuat gaya sitasi.")
+  return response.text()
 }
 
-export const areCitationStylesReady = () => initialized
+let initialization
+export const initCitationStyles = (load = loadStyle) => {
+  initialization ??= Promise.all(Object.entries(bundledStyles).map(async ([id, url]) => {
+    plugins.config.get("@csl").templates.add(id, await load(url))
+  })).catch(error => {
+    initialization = undefined
+    throw error
+  })
+  return initialization
+}
 
-const toCSLInput = (meta) => ({
-  type: meta.type || 'article-journal',
-  title: meta.title,
-  author: meta.authorsStructured?.length
-    ? meta.authorsStructured
-    : (meta.citationAuthors || meta.authors).map(name => {
-        // fallback untuk data lama (sebelum authorsStructured ada) — tetap rawan
-        // salah untuk nama dengan partikel/suffix, tapi hanya jalan sebagai jaring pengaman
-        const parts = name.split(' ')
-        const family = parts.pop()
-        const given = parts.join(' ')
-        return { given, family }
-      }),
-  'container-title': meta.journal,
-  issued: { 'date-parts': [[parseInt(meta.year)]] },
-  volume: meta.volume,
-  issue: meta.issue,
-  page: meta.pages,
-  DOI: meta.doi,
-  ISBN: meta.isbn,
-})
+const typeMap = {
+  "journal-article": "article-journal",
+  "proceedings-article": "paper-conference",
+  "book-chapter": "chapter",
+  "edited-book": "book",
+  "reference-book": "book",
+  monograph: "book",
+  dissertation: "thesis",
+  "posted-content": "article",
+  preprint: "article",
+  "reference-entry": "entry",
+  "peer-review": "review",
+  other: "document",
+}
 
-export const formatCitation = (meta, style = 'ieee') => {
-  const cite = new Cite(toCSLInput(meta))
-  return cite.format('bibliography', {
-    format: 'text',
-    template: style,
-  }).trim()
+const cslTypes = new Set([
+  "article", "article-journal", "article-magazine", "article-newspaper", "book", "chapter",
+  "dataset", "document", "entry", "entry-dictionary", "entry-encyclopedia", "manuscript",
+  "paper-conference", "report", "review", "software", "thesis", "webpage",
+])
+
+export const toCSLInput = meta => {
+  const mappedType = typeMap[meta.type] ?? meta.type
+  const type = cslTypes.has(mappedType) ? mappedType : "article-journal"
+  const names = meta.authorsStructured?.length ? meta.authorsStructured : (meta.citationAuthors || meta.authors || [])
+    .filter(name => typeof name === "string" && name.trim())
+    .map(name => {
+      const [first, ...rest] = name.trim().split(",")
+      if (rest.length) return { family: first.trim(), given: rest.join(",").trim() }
+      const parts = first.split(/\s+/)
+      const family = parts.pop()
+      return { family, given: parts.join(" ") }
+    })
+  const year = Number(meta.year)
+  const isPublisher = ["book", "report", "thesis", "dataset", "software"].includes(type)
+  return {
+    id: meta.id ?? "reference",
+    type,
+    title: meta.title,
+    [meta.contributorRole === "editor" ? "editor" : "author"]: names,
+    "container-title": isPublisher ? undefined : meta.journal || undefined,
+    publisher: meta.publisher || (isPublisher ? meta.journal || undefined : undefined),
+    issued: Number.isInteger(year) && year > 0 ? { "date-parts": [[year]] } : undefined,
+    volume: meta.volume || undefined,
+    issue: meta.issue || undefined,
+    page: meta.pages || undefined,
+    DOI: normalizeDoi(meta.doi) || undefined,
+    ISBN: meta.isbn || undefined,
+    URL: meta.url || undefined,
+  }
+}
+
+export const formatCitation = (meta, style = "ieee", format = "text") => {
+  if (!plugins.config.get("@csl").templates.has(style)) throw new Error("Gaya sitasi belum tersedia.")
+  return new Cite(toCSLInput(meta)).format("bibliography", { format, template: style }).trim()
 }
 
 export const STYLES = [
-  { id: 'ieee', label: 'IEEE' },
-  { id: 'apa', label: 'APA 7th' },
-  { id: 'harvard', label: 'Harvard' },
-  { id: 'chicago', label: 'Chicago' },
+  { id: "ieee", label: "IEEE" },
+  { id: "apa", label: "APA 7" },
+  { id: "harvard", label: "Harvard (Cite Them Right)" },
+  { id: "chicago", label: "Chicago (Author–Date)" },
 ]

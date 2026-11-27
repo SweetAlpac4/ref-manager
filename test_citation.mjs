@@ -1,44 +1,40 @@
-import Cite from 'citation-js'
-import { plugins } from '@citation-js/core'
+import assert from "node:assert/strict"
+import { readFile } from "node:fs/promises"
+import { formatCitation, initCitationStyles, toCSLInput } from "./src/lib/citation.js"
 
-const styles = {
-  ieee: 'https://raw.githubusercontent.com/citation-style-language/styles/master/ieee.csl',
-  harvard: 'https://raw.githubusercontent.com/citation-style-language/styles/master/harvard-cite-them-right.csl',
-  chicago: 'https://raw.githubusercontent.com/citation-style-language/styles/master/chicago-author-date.csl',
+await initCitationStyles(url => readFile(url, "utf8"))
+
+const article = {
+  title: "Reading across collections",
+  type: "journal-article",
+  authorsStructured: [{ given: "Jane Marie", family: "Doe" }, { given: "Ravi", family: "Singh" }],
+  year: "2020",
+  journal: "Journal of Library Research",
+  volume: "12",
+  issue: "2",
+  pages: "41-49",
+  doi: "https://doi.org/10.1234/paper",
 }
 
-for (const [name, url] of Object.entries(styles)) {
-  const csl = await fetch(url).then(r => r.text())
-  plugins.config.get('@csl').templates.add(name, csl)
+const expected = {
+  apa: "Doe, J. M., & Singh, R. (2020). Reading across collections. Journal of Library Research, 12(2), 41–49. https://doi.org/10.1234/paper",
+  ieee: "[1] J. M. Doe and R. Singh, “Reading across collections,” Journal of Library Research, vol. 12, no. 2, pp. 41–49, 2020, doi: 10.1234/paper.",
+  harvard: "Doe, J.M. and Singh, R. (2020) “Reading across collections,” Journal of Library Research, 12(2), pp. 41–49. Available at: https://doi.org/10.1234/paper.",
+  chicago: "Doe, Jane Marie, and Ravi Singh. 2020. “Reading across Collections.” Journal of Library Research 12 (2): 41–49. https://doi.org/10.1234/paper.",
 }
 
-const metadata = {
-  title: "Software-Defined Networking: A Comprehensive Survey",
-  author: [
-    { given: "Diego", family: "Kreutz" },
-    { given: "Fernando M. V.", family: "Ramos" },
-    { given: "Paulo Esteves", family: "Verissimo" },
-    { given: "Christian Esteve", family: "Rothenberg" },
-  ],
-  "container-title": "Proceedings of the IEEE",
-  issued: { "date-parts": [[2015]] },
-  volume: "103",
-  issue: "1",
-  page: "14-76",
-  DOI: "10.1109/JPROC.2014.2371999",
-  type: "article-journal"
-}
+for (const [style, citation] of Object.entries(expected)) assert.equal(formatCitation(article, style), citation)
 
-const cite = new Cite(metadata)
-
-console.log("=== IEEE ===")
-console.log(cite.format('bibliography', { format: 'text', template: 'ieee' }))
-
-console.log("=== APA ===")
-console.log(cite.format('bibliography', { format: 'text', template: 'apa' }))
-
-console.log("=== Harvard ===")
-console.log(cite.format('bibliography', { format: 'text', template: 'harvard' }))
-
-console.log("=== Chicago ===")
-console.log(cite.format('bibliography', { format: 'text', template: 'chicago' }))
+assert.match(formatCitation(article, "apa", "html"), /<i>Journal of Library Research<\/i>, <i>12<\/i>\(2\)/)
+assert.equal(formatCitation({
+  title: "Research handbook",
+  type: "edited-book",
+  authorsStructured: [{ given: "Jane", family: "Doe" }],
+  contributorRole: "editor",
+  journal: "Sample Press",
+}, "apa"), "Doe, J. (Ed.). (n.d.). Research handbook. Sample Press.")
+assert.equal(toCSLInput({ type: "book-chapter", journal: "Handbook", publisher: "Sample Press" }).type, "chapter")
+assert.equal(toCSLInput({ type: "dissertation" }).type, "thesis")
+assert.equal(toCSLInput({ type: "proceedings-article" }).type, "paper-conference")
+assert.deepEqual(toCSLInput({ authors: ["van der Berg, Ann"] }).author, [{ family: "van der Berg", given: "Ann" }])
+console.log("Citation checks passed for APA 7, IEEE, Harvard, and Chicago author-date.")

@@ -46,6 +46,8 @@ const parseCrossRef = (data) => {
     authors: displayAuthors,
     citationAuthors: rawNames,
     authorsStructured: structuredAuthors,
+    contributorRole: isEditor ? 'editor' : 'author',
+    publisher: data.publisher || null,
     journal: isBook
       ? (data.publisher || null)
       : normalizeText((data['container-title'] || [null])[0]),

@@ -106,6 +106,7 @@ const sanitizeEntry = (item) => ({
   contributorRole: item.contributorRole === "editor" ? "editor" : "author",
   authorsStructured: Array.isArray(item.authorsStructured) ? item.authorsStructured : null,
   journal: item.journal ?? null,
+  publisher: item.publisher ?? null,
   year: item.year ?? null,
   volume: item.volume ?? null,
   issue: item.issue ?? null,
@@ -167,7 +168,7 @@ export const mergeReferences = async (keepId, otherId) => {
   return db.transaction("rw", db.references, db.notes, db.attachments, async () => {
     const [keep, other] = await db.references.bulkGet([keepId, otherId])
     if (!keep || !other) return false
-    for (const key of ["journal", "year", "volume", "issue", "pages", "doi", "isbn", "abstract"]) {
+    for (const key of ["journal", "publisher", "year", "volume", "issue", "pages", "doi", "isbn", "abstract"]) {
       if (!keep[key] && other[key]) keep[key] = other[key]
     }
     if (!keep.authors.length) {

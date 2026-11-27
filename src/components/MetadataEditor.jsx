@@ -1,7 +1,7 @@
 import { useState } from "react"
 
 const fields = [
-  ["title", "Judul"], ["journal", "Jurnal, penerbit, atau institusi"],
+  ["title", "Judul"], ["journal", "Jurnal atau wadah publikasi"], ["publisher", "Penerbit atau institusi"],
   ["year", "Tahun"], ["volume", "Volume"], ["issue", "Nomor"],
   ["pages", "Halaman"], ["doi", "DOI"], ["isbn", "ISBN"],
 ]

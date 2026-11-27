@@ -7,10 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:citation": "node test_citation.mjs"
   },
   "dependencies": {
-    "citation-js": "^0.7.22",
+    "@citation-js/core": "^0.7.21",
+    "@citation-js/plugin-csl": "^0.7.22",
     "dexie": "^4.4.6",
     "pdfjs-dist": "^6.5.438",
     "react": "^19.2.6",

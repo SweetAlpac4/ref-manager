@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { lookupOpenAccessPdf, fetchThumbnail } from "../lib/crossref"
+import { cleanCitationMarkup, copyCitation } from "../lib/citationClipboard"
 import { initCitationStyles, formatCitation, STYLES } from "../lib/citation"
 import { saveToLibrary, isInLibrary, updateReference, READING_STATUSES } from "../lib/storage"
 import PdfAttachments from "./PdfAttachments"
@@ -18,6 +19,7 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
   const [saveMessage, setSaveMessage] = useState("")
   const [thumbnail, setThumbnail] = useState(null)
   const [selectedStyle, setSelectedStyle] = useState("ieee")
+  const [copyError, setCopyError] = useState(false)
   const [copied, setCopied] = useState(false)
   const [saved, setSaved] = useState(Boolean(onUpdate))
   const [stylesReady, setStylesReady] = useState(false)
@@ -45,12 +47,16 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
   }, [])
 
   const citation = useMemo(() => {
-    if (!metadata) return ""
-    if (stylesError) return "Gagal memuat gaya sitasi (periksa koneksi internet)."
-    if (!stylesReady) return "Memuat gaya sitasi..."
-    try { return formatCitation(metadata, selectedStyle) }
-    catch { return "Gagal memformat sitasi." }
-  }, [metadata, selectedStyle, stylesReady, stylesError])
+    if (!metadata || !stylesReady) return null
+    try {
+      return {
+        text: formatCitation(metadata, selectedStyle),
+        html: cleanCitationMarkup(formatCitation(metadata, selectedStyle, "html")),
+      }
+    } catch {
+      return null
+    }
+  }, [metadata, selectedStyle, stylesReady])
 
   const handleRetryStyles = () => {
     setStylesError(false)
@@ -59,10 +65,16 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
       .catch(() => setStylesError(true))
   }
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(citation)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const handleCopy = async () => {
+    if (!citation) return
+    setCopyError(false)
+    try {
+      await copyCitation(citation.text, citation.html)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setCopyError(true)
+    }
   }
 
   const handleSave = async () => {
@@ -187,12 +199,15 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
           <div className="citation-box">
             <div className="citation-header">
               <span className="citation-label">{STYLES.find(s => s.id === selectedStyle)?.label}</span>
-              <button className="copy-btn" onClick={handleCopy}>
+              <button className="copy-btn" onClick={handleCopy} disabled={!citation}>
                 {copied ? <CheckIcon /> : <CopyIcon />}
                 <span>{copied ? "Tersalin!" : "Salin"}</span>
               </button>
             </div>
-            <p className="citation-text">{citation}</p>
+            {citation ? <div className="citation-text" dangerouslySetInnerHTML={{ __html: citation.html }} />
+              : <p className="citation-text">{stylesError ? "Gagal memuat gaya sitasi."
+                : stylesReady ? "Gagal memformat sitasi." : "Memuat gaya sitasi…"}</p>}
+            {copyError && <p role="alert">Gagal menyalin sitasi.</p>}
             {stylesError && (
               <button className="link-pill" onClick={handleRetryStyles}>Coba Lagi</button>
             )}
