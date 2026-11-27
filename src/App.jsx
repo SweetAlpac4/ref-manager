@@ -14,6 +14,7 @@ export default function App() {
   const [mode, setMode] = useState("doi") // "doi" | "title" | "batch"
   const [input, setInput] = useState("")
   const [batchInput, setBatchInput] = useState("")
+  const [batchEditorOpen, setBatchEditorOpen] = useState(true)
   const [status, setStatus] = useState("idle")
   const [metadata, setMetadata] = useState(null)
   const [errorMsg, setErrorMsg] = useState("")
@@ -72,6 +73,7 @@ export default function App() {
 
     if (token !== requestToken.current) return // user sudah pindah mode/tab, buang hasilnya
 
+    setBatchEditorOpen(false)
     setBatchResults(results)
     setBatchProgress(null)
     setStatus("idle")
@@ -85,6 +87,7 @@ export default function App() {
     setInput(""); setBatchInput("")
     setStatus("idle"); setMetadata(null)
     setBatchResults(null); setBatchProgress(null)
+    setBatchEditorOpen(true)
   }
 
   const switchTab = (t) => {
@@ -132,7 +135,7 @@ export default function App() {
             <div className="page-heading search-heading">
               <div><h1>Search references</h1><p>Enter a DOI or paper title. Use Batch to search multiple references.</p></div>
             </div>
-            <div className="card search-card">
+            <div className={`card search-card ${mode === "batch" ? "batch-search-card" : ""} ${batchResults && !batchEditorOpen ? "batch-search-collapsed" : ""}`}>
               <div className="mode-toggle">
                 <button className={`mode-btn ${mode === "doi" ? "active" : ""}`} onClick={() => switchMode("doi")}>DOI</button>
                 <button className={`mode-btn ${mode === "title" ? "active" : ""}`} onClick={() => switchMode("title")}>Title</button>
@@ -156,35 +159,43 @@ export default function App() {
                   </button>
                 </div>
               ) : (
-                <div className="batch-input-wrapper">
-                  <textarea
-                    aria-label="DOIs or titles to search"
-                    className="batch-textarea"
-                    rows={6}
-                    placeholder={"Paste one DOI or title per line. For example:\n10.1109/JPROC.2014.2371999\nAttention Is All You Need\n10.1145/3292500.3330919"}
-                    value={batchInput}
-                    onChange={e => setBatchInput(e.target.value)}
-                  />
-                  <div className="batch-toolbar">
-                    <span className="batch-count">
-                      {batchLineCount} lines {batchLineCount >= MAX_BATCH_ITEMS && `(max. ${MAX_BATCH_ITEMS})`}
-                    </span>
-                    <button className="search-btn" onClick={handleBatchSearch} disabled={status === "loading" || batchLineCount === 0}>
-                      {status === "loading" ? <span className="spinner" /> : <SearchIcon />}
-                      <span>{status === "loading" ? "Searching…" : "Search all"}</span>
-                    </button>
-                  </div>
-                  {batchProgress && (
-                    <div className="batch-progress">
-                      <div className="batch-progress-bar">
-                        <div className="batch-progress-fill" style={{ width: `${(batchProgress.done / batchProgress.total) * 100}%` }} />
-                      </div>
-                      <p className="batch-progress-label">
-                        {batchProgress.done}/{batchProgress.total}
-                        {batchProgress.current ? ` · Searching for ${batchProgress.current}` : " · Done"}
-                      </p>
+                <div className="batch-search">
+                  {batchResults && <button className="link-pill batch-edit-toggle"
+                    aria-expanded={batchEditorOpen} aria-controls="batch-search-editor" onClick={() => setBatchEditorOpen(value => !value)}>
+                    {batchEditorOpen ? "Hide search list" : `Edit search list (${batchLineCount})`}
+                  </button>}
+                  <div id="batch-search-editor" className="batch-input-wrapper" hidden={!batchEditorOpen}>
+                    <label className="section-label" htmlFor="batch-search-input">DOIs or titles, one per line</label>
+                    <textarea
+                      id="batch-search-input"
+                      aria-label="DOIs or titles to search"
+                      className="batch-textarea"
+                      rows={6}
+                      placeholder={"Paste one DOI or title per line. For example:\n10.1109/JPROC.2014.2371999\nAttention Is All You Need\n10.1145/3292500.3330919"}
+                      value={batchInput}
+                      onChange={e => setBatchInput(e.target.value)}
+                    />
+                    <div className="batch-toolbar">
+                      <span className="batch-count">
+                        {batchLineCount} lines {batchLineCount >= MAX_BATCH_ITEMS && `(max. ${MAX_BATCH_ITEMS})`}
+                      </span>
+                      <button className="search-btn" onClick={handleBatchSearch} disabled={status === "loading" || batchLineCount === 0}>
+                        {status === "loading" ? <span className="spinner" /> : <SearchIcon />}
+                        <span>{status === "loading" ? "Searching…" : "Search all"}</span>
+                      </button>
                     </div>
-                  )}
+                    {batchProgress && (
+                      <div className="batch-progress">
+                        <div className="batch-progress-bar">
+                          <div className="batch-progress-fill" style={{ width: `${(batchProgress.done / batchProgress.total) * 100}%` }} />
+                        </div>
+                        <p className="batch-progress-label">
+                          {batchProgress.done}/{batchProgress.total}
+                          {batchProgress.current ? ` · Searching for ${batchProgress.current}` : " · Done"}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 

@@ -10,7 +10,7 @@ export function getInitialTheme() {
 
 export function applyTheme(theme) {
   document.documentElement.dataset.theme = theme
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#0c0c0c" : "#f0f0f0")
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#0c0c0c" : "#f8f9fa")
 }
 
 export function saveTheme(theme) {

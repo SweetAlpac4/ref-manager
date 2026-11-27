@@ -8,7 +8,7 @@ import { normalizeReferenceUrl } from "../lib/referenceMetadata"
 import PdfAttachments from "./PdfAttachments"
 import NotesPanel from "./NotesPanel"
 import MetadataEditor from "./MetadataEditor"
-import { CopyIcon, CheckIcon, BookIcon, ArrowLeftIcon } from "./icons"
+import { CopyIcon, CheckIcon, ArrowLeftIcon } from "./icons"
 
 // PENTING: kalau dipakai untuk menampilkan item yang berbeda-beda (mis. dari list
 // batch/library), render komponen ini dengan `key` unik per item (mis. key={doi}),
@@ -111,19 +111,17 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
       )}
 
       <div className="result-grid">
-
-        <div className="card col-left">
-          <div className="cover-box">
-            {thumbnail
-              ? <img src={thumbnail} alt="cover" className="cover-img" />
-              : <div className="cover-placeholder"><BookIcon /></div>
-            }
+        <div className="card reference-summary">
+          <div className="reference-heading">
+            {thumbnail && <img src={thumbnail} alt="Book cover" className="cover-img" />}
+            <div>
+              <p className="result-title">{metadata.title}</p>
+              <p className="result-authors">{metadata.authors?.join(", ")}</p>
+              <p className="result-venue">
+                {[metadata.journal, metadata.volume && `Vol. ${metadata.volume}`, metadata.issue && `No. ${metadata.issue}`, metadata.pages && `pp. ${metadata.pages}`, metadata.year].filter(Boolean).join(" · ")}
+              </p>
+            </div>
           </div>
-          <p className="result-title">{metadata.title}</p>
-          <p className="result-authors">{metadata.authors?.join(", ")}</p>
-          <p className="result-venue">
-            {[metadata.journal, metadata.volume && `Vol. ${metadata.volume}`, metadata.issue && `No. ${metadata.issue}`, metadata.pages && `pp. ${metadata.pages}`, metadata.year].filter(Boolean).join(" · ")}
-          </p>
 
           <div className="link-row">
             {sourceUrl && (
@@ -147,40 +145,19 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
           </div>
 
           {saveMessage && <p role="alert">{saveMessage}</p>}
-          {onUpdate && <>
-            <button className="link-pill" onClick={() => setEditing(!editing)}>Edit metadata</button>
-            {editing && <MetadataEditor metadata={metadata} onCancel={() => setEditing(false)} onSave={async changes => {
-              const doiChanged = normalizeDoi(changes.doi) !== normalizeDoi(metadata.doi)
-              await saveChanges(doiChanged ? { ...changes, pdfUrl: null } : changes)
-              setEditing(false)
-            }} />}
-            <ReferenceOrganization metadata={metadata} onSave={saveChanges} />
-            <PdfAttachments referenceId={metadata.id} target={pdfTarget} onAttachmentsChange={onAttachmentsChange}
-              onNoteCreated={() => setNotesVersion(version => version + 1)}
-              onMetadata={async ({ title, author, doi }) => {
-                const changes = {}
-                if (title) changes.title = title
-                if (doi) Object.assign(changes, { doi, pdfUrl: null })
-                if (author) {
-                  const authors = author.split(";").map(name => name.trim()).filter(Boolean)
-                  Object.assign(changes, { authors, citationAuthors: authors, authorsStructured: authors.map(literal => ({ literal })), contributorRole: "author" })
-                }
-                await saveChanges(changes)
-              }} />
-            <NotesPanel key={notesVersion} referenceId={metadata.id} />
-          </>}
 
           {metadata.abstract && (
             <div className="abstract-section">
+              <h3>Abstract</h3>
               <p className="abstract-text">{metadata.abstract}</p>
             </div>
           )}
         </div>
 
-        <div className="card col-right">
+        <div className="card reference-publication">
+          <h2>Publication details</h2>
           <div className="metadata-grid">
-            <MetaRow label="Title" value={metadata.title} />
-            <MetaRow label="Authors" value={metadata.authors?.join(", ")} />
+            <MetaRow label="Publisher" value={metadata.publisher} />
             <MetaRow label="Journal" value={metadata.journal} />
             <MetaRow label="Year" value={metadata.year} />
             <MetaRow label="Volume" value={metadata.volume} />
@@ -189,9 +166,9 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
             <MetaRow label="DOI" value={metadata.doi} />
             {metadata.isbn && <MetaRow label="ISBN" value={metadata.isbn} />}
           </div>
+        </div>
 
-          <div className="divider" />
-
+        <div className="card reference-citation">
           <div className="format-section">
             <p className="section-label">Citation format</p>
             <div className="style-pills">
@@ -222,6 +199,37 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
         </div>
 
       </div>
+      {onUpdate && <div className="reference-workspace">
+        <section className="card">
+          <div className="link-row">
+            <h2>Reference settings</h2>
+            <button className="link-pill" aria-expanded={editing} onClick={() => setEditing(!editing)}>Edit metadata</button>
+          </div>
+          {editing && <MetadataEditor metadata={metadata} onCancel={() => setEditing(false)} onSave={async changes => {
+            const doiChanged = normalizeDoi(changes.doi) !== normalizeDoi(metadata.doi)
+            await saveChanges(doiChanged ? { ...changes, pdfUrl: null } : changes)
+            setEditing(false)
+          }} />}
+          <ReferenceOrganization metadata={metadata} onSave={saveChanges} />
+        </section>
+        <section className="card">
+          <PdfAttachments referenceId={metadata.id} target={pdfTarget} onAttachmentsChange={onAttachmentsChange}
+            onNoteCreated={() => setNotesVersion(version => version + 1)}
+            onMetadata={async ({ title, author, doi }) => {
+              const changes = {}
+              if (title) changes.title = title
+              if (doi) Object.assign(changes, { doi, pdfUrl: null })
+              if (author) {
+                const authors = author.split(";").map(name => name.trim()).filter(Boolean)
+                Object.assign(changes, { authors, citationAuthors: authors, authorsStructured: authors.map(literal => ({ literal })), contributorRole: "author" })
+              }
+              await saveChanges(changes)
+            }} />
+        </section>
+        <section className="card">
+          <NotesPanel key={notesVersion} referenceId={metadata.id} />
+        </section>
+      </div>}
     </div>
   )
 }
@@ -239,7 +247,7 @@ function MetaRow({ label, value }) {
 
 function ReferenceOrganization({ metadata, onSave }) {
   const [message, setMessage] = useState("")
-  return <form className="reference-fields" onSubmit={async event => {
+  return <form className="reference-fields reference-organization" onSubmit={async event => {
     event.preventDefault()
     const fields = new FormData(event.currentTarget)
     try {
@@ -259,6 +267,6 @@ function ReferenceOrganization({ metadata, onSave }) {
       {READING_STATUSES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
     </select></label>
     <button className="link-pill">Save settings</button>
-    <p role="status">{message}</p>
+    {message && <p role="status">{message}</p>}
   </form>
 }
