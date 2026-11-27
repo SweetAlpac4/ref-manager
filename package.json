@@ -9,7 +9,10 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test:citation": "node test_citation.mjs",
-    "test:metadata": "node test_reference_metadata.mjs"
+    "test:metadata": "node test_reference_metadata.mjs",
+    "test:library": "node test_library_workflows.mjs",
+    "test:word": "node test_word_citations.mjs",
+    "test:cloud": "node test_cloud_library.mjs"
   },
   "dependencies": {
     "@citation-js/core": "^0.7.21",

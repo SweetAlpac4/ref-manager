@@ -12,7 +12,7 @@
     #preview { overflow-wrap: anywhere; white-space: pre-wrap; }
   </style>
   <script defer src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-  <script defer src="./taskpane.js"></script>
+  <script type="module" src="./taskpane.js"></script>
 </head>
 <body>
   <h1>Ref Manager</h1>
@@ -24,6 +24,7 @@
     <p id="preview"></p>
     <button id="insert" type="button">Insert at cursor</button>
     <button id="bibliography" type="button">Append bibliography</button>
+    <button id="refresh" type="button" hidden>Refresh citations and bibliography</button>
   </div>
   <p id="feedback" role="status">Connecting to Word…</p>
 </body>

@@ -6,7 +6,7 @@ Ref Manager helps you organize research references, read PDFs, and prepare citat
 
 1. Open **Search** and look up a DOI or title. **Batch** accepts several searches at once. Metadata comes from Crossref and DataCite.
 2. Choose **Save to library**. To enter a source manually, open **Library → Add reference**. Open a reference to edit its metadata, abstract, collections, tags, and reading status.
-3. Use search and filters to find saved references. A reference can belong to multiple collections. **Find duplicates** checks DOI, book ISBN, and similarities in title, author, and year. Merging keeps the selected record's existing values, fills missing metadata, and carries over collections, tags, notes, and attachments.
+3. Combine smart collections such as **Unread**, **Without DOI**, and **Without local PDF** with search, publication year, tags, and collections. **Find duplicates** checks DOI, book ISBN, and similarities in title, author, and year. Merging keeps the selected record's existing values, fills missing metadata, and carries over collections, tags, notes, and attachments.
 
 ## Read PDFs and take notes
 
@@ -29,7 +29,7 @@ Use **Download citation file** in an in-text style. Install the [document-bound 
 
 ### Insert citations in Word
 
-On the HTTPS deployment, download the **Word add-in manifest** from the citation workspace. [Sideload the add-in](integrations/word/README.md), load a citation file, and insert citations at the cursor or append the bibliography from the task pane.
+On the HTTPS deployment, download the **Word add-in manifest** from the citation workspace. Sideload the add-in and load a citation file to insert citations and a bibliography. For supported Word clients and built-in in-text styles, export the same draft again and use **Refresh citations and bibliography** to update the linked fields. [Word setup and compatibility](integrations/word/README.md)
 
 ### Insert citations in LibreOffice Writer
 
@@ -43,9 +43,9 @@ The personal library runs without an account or a VPS. Backups can be transferre
 
 ## Personal cloud library
 
-Ref Manager works without an account. **Library → Cloud library** offers an optional private account for storing references, collections, tags, reading status, and a note per reference across devices. Copy references explicitly between the browser library and the cloud library. PDFs, annotations, and existing local notes stay in the browser.
+Ref Manager works without an account. **Library → Cloud library** offers an optional private account for storing references, collections, tags, reading status, and a note per reference across devices. Copy references explicitly between the browser library and the cloud library. A cloud reference can hold one private PDF up to 20 MB. Use a workspace backup to transfer local notes and PDF annotations.
 
-The cloud view refreshes while open and checks the revision before saving an edit. Self-service accounts require a configured Supabase project. See the [cloud setup guide](supabase/README.md).
+The cloud view refreshes while open and checks the revision before saving an edit. If a revision conflicts, it keeps your draft so you can compare it with the latest version before saving. Self-service accounts require a configured Supabase project. [Cloud setup guide](supabase/README.md)
 
 ## Develop locally
 
@@ -62,6 +62,8 @@ Run these checks before pushing.
 npm run lint
 npm run test:citation
 npm run test:metadata
+npm run test:library
+npm run test:word
 npm run build
 ```
 

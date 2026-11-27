@@ -10,7 +10,7 @@ export function createWordManifest(origin) {
   <ProviderName>Ref Manager</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Ref Manager"/>
-  <Description DefaultValue="Insert citations and a bibliography from a Ref Manager citation file."/>
+  <Description DefaultValue="Insert and refresh citations and a bibliography from a Ref Manager citation file."/>
   <IconUrl DefaultValue="${base}/icon-192.png"/>
   <SupportUrl DefaultValue="https://github.com/SweetAlpac4/ref-manager/issues"/>
   <Hosts><Host Name="Document"/></Hosts>

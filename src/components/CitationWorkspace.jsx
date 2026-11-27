@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { formatCitationWorkspace, initCitationStyles, registerCitationStyle, WORKSPACE_STYLES } from "../lib/citation"
 import { createWordManifest } from "../lib/wordAddIn"
+import { createCitationBundle } from "../lib/wordCitations"
 import { downloadFile } from "../lib/download"
 import { cleanCitationMarkup, copyCitation } from "../lib/citationClipboard"
 import { fetchCatalogStyle, prepareCustomStyle } from "../lib/cslImport"
@@ -124,13 +125,7 @@ export default function CitationWorkspace({ references, onBack }) {
   }
 
   const downloadCitationFile = () => {
-    const bundle = {
-      format: "ref-manager-citations",
-      version: 1,
-      style: styles.find(item => item.id === style)?.label,
-      citations: output.citations.map(citation => citation.value.trim()),
-      bibliography: output.bibliography.split(/\r?\n/).map(line => line.trim()).filter(Boolean),
-    }
+    const bundle = createCitationBundle(output, style, styles.find(item => item.id === style)?.label, groups, references)
     downloadFile("ref-manager-citations.json", JSON.stringify(bundle, null, 2), "application/json")
   }
 
