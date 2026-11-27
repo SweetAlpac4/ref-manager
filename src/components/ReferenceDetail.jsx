@@ -14,7 +14,7 @@ import { CopyIcon, CheckIcon, BookIcon, ArrowLeftIcon } from "./icons"
 // batch/library), render komponen ini dengan `key` unik per item (mis. key={doi}),
 // supaya React remount komponen dan effect fetch pdf/thumbnail jalan ulang untuk
 // item yang baru, bukan nyangkut ke data item sebelumnya.
-export default function ReferenceDetail({ metadata: initialMetadata, onBack, onSaveChange, onDelete, onUpdate, pdfTarget }) {
+export default function ReferenceDetail({ metadata: initialMetadata, onBack, onSaveChange, onDelete, onUpdate, onAttachmentsChange, pdfTarget }) {
   const [metadata, setMetadata] = useState(initialMetadata)
   const [notesVersion, setNotesVersion] = useState(0)
   const [editing, setEditing] = useState(false)
@@ -155,7 +155,8 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
               setEditing(false)
             }} />}
             <ReferenceOrganization metadata={metadata} onSave={saveChanges} />
-            <PdfAttachments referenceId={metadata.id} target={pdfTarget} onNoteCreated={() => setNotesVersion(version => version + 1)}
+            <PdfAttachments referenceId={metadata.id} target={pdfTarget} onAttachmentsChange={onAttachmentsChange}
+              onNoteCreated={() => setNotesVersion(version => version + 1)}
               onMetadata={async ({ title, author, doi }) => {
                 const changes = {}
                 if (title) changes.title = title

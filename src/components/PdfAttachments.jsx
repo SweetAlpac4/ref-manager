@@ -4,7 +4,7 @@ import { attachPdf, deleteAttachment, getAttachments } from "../lib/storage"
 
 const PdfReader = lazy(() => import("./PdfReader"))
 
-export default function PdfAttachments({ referenceId, target, onNoteCreated, onMetadata }) {
+export default function PdfAttachments({ referenceId, target, onAttachmentsChange, onNoteCreated, onMetadata }) {
   const [opened, setOpened] = useState(null)
   const [attachments, setAttachments] = useState([])
   const [message, setMessage] = useState("")
@@ -33,6 +33,7 @@ export default function PdfAttachments({ referenceId, target, onNoteCreated, onM
     try {
       await attachPdf(referenceId, file)
       setAttachments(await getAttachments(referenceId))
+      await onAttachmentsChange?.()
       setMessage("PDF attached.")
     } catch (error) {
       setMessage(error.name === "QuotaExceededError" ? "Browser storage is full." : error.message)
@@ -46,6 +47,7 @@ export default function PdfAttachments({ referenceId, target, onNoteCreated, onM
     try {
       await deleteAttachment(item.id)
       setAttachments(await getAttachments(referenceId))
+      await onAttachmentsChange?.()
       setMessage("Attachment deleted.")
     } catch {
       setMessage("Could not delete the attachment.")

@@ -2,8 +2,10 @@ import { lazy, Suspense, useRef, useState, useEffect, useMemo } from "react"
 import {
   READING_STATUSES, mergeReferences, getLibrary, saveToLibrary, removeFromLibrary, removeManyFromLibrary, exportLibraryAsBibtex,
   exportLibraryAsRis, exportLibraryAsJson, importLibraryFromJson,
+  getAttachmentReferenceIds,
 } from "../lib/storage"
-import { duplicateScore, normalizeText } from "../lib/duplicates"
+import { duplicateScore } from "../lib/duplicates"
+import { filterLibrary, SMART_COLLECTIONS } from "../lib/libraryFilters"
 import { downloadFile } from "../lib/download"
 import LibraryBackup from "./LibraryBackup"
 import CitationWorkspace from "./CitationWorkspace"
@@ -24,6 +26,7 @@ const dateLabel = (key) => {
 
 export default function LibraryPanel() {
   const [items, setItems] = useState([])
+  const [attachmentIds, setAttachmentIds] = useState(() => new Set())
   const [loading, setLoading] = useState(true)
   const [selectedIds, setSelectedIds] = useState(() => new Set())
   const [openItem, setOpenItem] = useState(null)
@@ -39,17 +42,27 @@ export default function LibraryPanel() {
   const [query, setQuery] = useState("")
   const [collection, setCollection] = useState("")
   const [tag, setTag] = useState("")
+  const [year, setYear] = useState("")
+  const [smart, setSmart] = useState("")
   const fileInputRef = useRef(null)
 
   const refresh = async () => {
-    setItems(await getLibrary())
+    const [references, ids] = await Promise.all([getLibrary(), getAttachmentReferenceIds()])
+    setItems(references)
+    setAttachmentIds(new Set(ids))
   }
 
   useEffect(() => {
     let cancelled = false
-    getLibrary().then(data => {
+    Promise.all([getLibrary(), getAttachmentReferenceIds()]).then(([data, ids]) => {
       if (!cancelled) {
         setItems(data)
+        setAttachmentIds(new Set(ids))
+        setLoading(false)
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setImportMsg("Could not load the local library. Reopen the library to try again.")
         setLoading(false)
       }
     })
@@ -58,13 +71,9 @@ export default function LibraryPanel() {
 
   const collections = [...new Set(items.flatMap(item => item.collections ?? []))].sort()
   const tags = [...new Set(items.flatMap(item => item.tags ?? []))].sort()
-  const visible = useMemo(() => items.filter(item => {
-    const terms = normalizeText(query).split(" ")
-    const text = normalizeText([item.title, ...item.authors, item.journal, item.year, item.doi,
-      item.isbn, item.abstract, ...(item.collections ?? []), ...(item.tags ?? [])].join(" "))
-    return (!readingStatus || (item.readingStatus ?? "unread") === readingStatus) && (!collection || item.collections?.includes(collection))
-      && (!tag || item.tags?.includes(tag)) && terms.every(term => text.includes(term))
-  }), [items, query, collection, tag, readingStatus])
+  const years = [...new Set(items.map(item => item.year).filter(Boolean).map(String))].sort((a, b) => Number(b) - Number(a))
+  const visible = useMemo(() => filterLibrary(items, { query, collection, tag, readingStatus, year, smart }, attachmentIds),
+    [items, query, collection, tag, readingStatus, year, smart, attachmentIds])
 
   // kelompokkan item berdasarkan tanggal disimpan, urutan terbaru dulu
   const groups = useMemo(() => {
@@ -198,6 +207,7 @@ export default function LibraryPanel() {
         metadata={openItem}
         pdfTarget={pdfTarget}
         onBack={() => { setPdfTarget(null); setOpenItem(null) }}
+        onAttachmentsChange={async () => setAttachmentIds(new Set(await getAttachmentReferenceIds()))}
         onUpdate={async () => { await refresh() }}
         onDelete={async () => {
           if (!await handleRemove(openItem.id)) return
@@ -218,6 +228,10 @@ export default function LibraryPanel() {
       <LibraryBackup onImport={refresh} download={downloadFile} />
       <div className="library-filters">
         <input type="search" aria-label="Search library" placeholder="Search title, author, DOI, or abstract" value={query} onChange={event => setQuery(event.target.value)} />
+        <select aria-label="Smart collection" value={smart} onChange={event => setSmart(event.target.value)}>
+          <option value="">All references</option>
+          {SMART_COLLECTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
         <select aria-label="Filter by collection" value={collection} onChange={event => setCollection(event.target.value)}>
           <option value="">All collections</option>
           {collections.map(value => <option key={value}>{value}</option>)}
@@ -229,6 +243,10 @@ export default function LibraryPanel() {
         <select aria-label="Filter by reading status" value={readingStatus} onChange={event => setReadingStatus(event.target.value)}>
           <option value="">All reading statuses</option>
           {READING_STATUSES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
+        <select aria-label="Filter by publication year" value={year} onChange={event => setYear(event.target.value)}>
+          <option value="">All publication years</option>
+          {years.map(value => <option key={value}>{value}</option>)}
         </select>
       </div>
       {items.length > 0 && visible.length === 0 && <p>No matching references.</p>}

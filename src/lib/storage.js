@@ -1,5 +1,6 @@
 import Dexie from "dexie"
 import { duplicateScore } from "./duplicates.js"
+import { assertPdf } from "./pdfFile.js"
 import { cleanLabels, normalizeReferenceMetadata, READING_STATUSES } from "./referenceMetadata.js"
 
 export { READING_STATUSES }
@@ -28,13 +29,13 @@ db.version(3).stores({
 })
 
 export const getAllAttachments = () => db.attachments.toArray()
+export const getAttachmentReferenceIds = () => db.attachments.orderBy("referenceId").uniqueKeys()
 
 export const getAttachments = referenceId =>
   db.attachments.where("referenceId").equals(referenceId).toArray()
 
 export const attachPdf = async (referenceId, file) => {
-  const header = await file.slice(0, 1024).text()
-  if (!header.includes("%PDF-")) throw new Error("Choose a valid PDF file.")
+  await assertPdf(file)
   return db.transaction("rw", db.references, db.attachments, async () => {
     if (!await db.references.get(referenceId)) throw new Error("Reference not found.")
     return db.attachments.add({
