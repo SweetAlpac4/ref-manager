@@ -28,6 +28,8 @@ The responsive interface uses a black and silver palette. The **Light / Dark** c
 - **PDF reader.** Attach a local PDF and choose **Read PDF** to zoom, navigate pages, search text, highlight selections, or add comments and page notes. Use **Library → Search PDF contents** to search across local attachments. Text search and selection require a text layer. Scans without a text layer can be viewed as images. **Read PDF metadata** lets you review embedded title, author, and DOI before applying them. Annotations stay in Ref Manager. Downloading an attachment gives you the original PDF.
 - **Research notes.** Save notes, insights, and excerpts on their own or link them to several references. **Copy to notes** turns a PDF annotation into a research note.
 
+![Search PDF contents showing a matching page and a button to open it](docs/screenshots/pdf-search.png)
+
 ### Highlight a passage and save it to your notes
 
 1. Open a reference and choose **Attach PDF → Read PDF**.
@@ -35,6 +37,8 @@ The responsive interface uses a black and silver palette. The **Light / Dark** c
 3. Under **Annotations on page**, choose **Copy to notes** to save the passage and comment as a linked research note.
 
 ![PDF reader showing a highlighted passage and its saved comment in the annotations panel](docs/screenshots/pdf-annotations.png)
+
+![Research Notes showing an excerpt copied from an annotated PDF and linked to its source](docs/screenshots/research-notes.png)
 
 ## Citations and document integrations
 
@@ -61,6 +65,8 @@ Copy formatted output with italics when the browser supports HTML clipboard data
 | **Library → Library backup** | The local workspace, including reference records, research notes, PDF files, and annotations. On restore, matching records keep their metadata and gain any additional collection and tag memberships. |
 
 Local data lives in IndexedDB in the current browser profile and site origin. Keep a workspace backup before clearing site data, changing domains, or moving to another browser. Online metadata lookup, open-access links, and fetching styles from the catalog require a connection.
+
+![Library backup panel with download and restore controls](docs/screenshots/workspace-backup.png)
 
 ## Optional cloud library
 

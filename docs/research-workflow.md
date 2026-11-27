@@ -23,7 +23,7 @@ Use **Find duplicates** to review potential matches and select the record to kee
 3. Select text and choose **Highlight selected text**. Add a comment if needed and save the annotation. Use **Add sticky note** to comment on a page without selecting text.
 4. Choose **Copy to notes** under an annotation to create a linked excerpt or note. Downloading the PDF gives you the original file. Use a [workspace backup](data-and-backups.md) to move both the file and its annotations.
 
-![Search PDF contents showing a matching page and a button to open it](screenshots/pdf-search.png)
+[Search PDF contents showing a matching page and a button to open it](screenshots/pdf-search.png)
 
 If a PDF has no selectable text, the reader can still display its pages. You can add page notes, but search and text highlighting require a text layer. For embedded title, author, or DOI, choose **Read PDF metadata** and apply only the suggested fields you want.
 
@@ -31,6 +31,6 @@ If a PDF has no selectable text, the reader can still display its pages. You can
 
 Open **Library → Research notes** to search your notes and excerpts. Create a **Research insight** for a conclusion that draws on more than one source, then select those sources in **Related references**. Create a standalone note by leaving that field empty. For notes tied to one work, open the reference and use **Reference notes**.
 
-![Research Notes showing an excerpt copied from an annotated PDF and linked to its source](screenshots/research-notes.png)
+[Research Notes showing an excerpt copied from an annotated PDF and linked to its source](screenshots/research-notes.png)
 
 When you are ready to write, open the [Citation workspace](citation-workflow.md).

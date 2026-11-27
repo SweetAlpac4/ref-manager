@@ -17,7 +17,7 @@
 2. Open Ref Manager at the destination and choose **Library backup → Restore backup**. Select the workspace backup file.
 3. Check the counts in the restore message. Open a reference, a research note, and an annotated PDF to check the restored data before clearing anything at the source.
 
-![Library backup panel with download and restore controls](screenshots/workspace-backup.png)
+[Library backup panel with download and restore controls](screenshots/workspace-backup.png)
 
 Local data belongs to the current browser profile and site origin. A different browser or domain starts with a separate library. Restoring a workspace backup keeps existing reference metadata, adds collection and tag memberships, and restores missing notes and attachments. Citation drafts and theme preferences are stored separately from the workspace backup.
 
