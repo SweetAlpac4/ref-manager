@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react"
 import { lookupOpenAccessPdf, fetchThumbnail } from "../lib/crossref"
 import { cleanCitationMarkup, copyCitation } from "../lib/citationClipboard"
 import { initCitationStyles, formatCitation, STYLES } from "../lib/citation"
-import { saveToLibrary, isInLibrary, updateReference, READING_STATUSES } from "../lib/storage"
+import { saveToLibrary, getSavedMatches, updateReference, READING_STATUSES } from "../lib/storage"
 import PdfAttachments from "./PdfAttachments"
 import NotesPanel from "./NotesPanel"
 import MetadataEditor from "./MetadataEditor"
@@ -32,7 +32,9 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
   }, [])
 
   useEffect(() => {
-    if (!onUpdate) isInLibrary(initialMetadata?.doi).then(setSaved)
+    if (!onUpdate) getSavedMatches([initialMetadata]).then(matches => {
+      if (matches.has(initialMetadata)) setSaved(true)
+    }).catch(() => {})
 
     if (initialMetadata?.doi && !initialMetadata.pdfUrl) {
       lookupOpenAccessPdf(initialMetadata.doi).then(url => {

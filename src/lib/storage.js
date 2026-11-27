@@ -100,45 +100,52 @@ const cleanLabels = values => Array.isArray(values)
   ? [...new Set(values.filter(value => typeof value === "string").map(value => value.trim()).filter(Boolean))]
   : []
 
-const sanitizeEntry = (item) => ({
-  id: item.id,
-  title: item.title,
-  authors: Array.isArray(item.citationAuthors) ? item.citationAuthors : (item.authors || []),
-  citationAuthors: Array.isArray(item.citationAuthors) ? item.citationAuthors : (item.authors || []),
-  contributorRole: item.contributorRole === "editor" ? "editor" : "author",
-  authorsStructured: Array.isArray(item.authorsStructured) ? item.authorsStructured : null,
-  journal: item.journal ?? null,
-  publisher: item.publisher ?? null,
-  year: item.year ?? null,
-  volume: item.volume ?? null,
-  issue: item.issue ?? null,
-  pages: item.pages ?? null,
-  doi: normalizeDoi(item.doi) || null,
-  isbn: item.isbn ?? null,
-  type: item.type ?? "article-journal",
-  abstract: item.abstract ?? null,
-  pdfUrl: typeof item.pdfUrl === "string" && /^https?:\/\//i.test(item.pdfUrl) ? item.pdfUrl : null,
-  readingStatus: READING_STATUSES.some(([value]) => value === item.readingStatus) ? item.readingStatus : "unread",
-  collections: cleanLabels(item.collections),
-  tags: cleanLabels(item.tags),
-  savedAt: item.savedAt ?? new Date().toISOString(),
-})
+const cleanText = value => typeof value === "string" ? value.trim() || null
+  : typeof value === "number" && Number.isFinite(value) ? String(value) : null
+
+const nameFields = ["family", "given", "literal", "suffix", "dropping-particle", "non-dropping-particle"]
+
+const sanitizeEntry = item => {
+  const authors = (Array.isArray(item.authors) ? item.authors : []).filter(value => typeof value === "string" && value.trim())
+  const citationAuthors = (Array.isArray(item.citationAuthors) ? item.citationAuthors : authors)
+    .filter(value => typeof value === "string" && value.trim())
+  const names = Array.isArray(item.authorsStructured) ? item.authorsStructured : []
+  return {
+    id: item.id,
+    title: cleanText(item.title) ?? "",
+    authors,
+    citationAuthors,
+    contributorRole: item.contributorRole === "editor" ? "editor" : "author",
+    authorsStructured: names.filter(name => name && typeof name === "object")
+      .map(name => Object.fromEntries(nameFields.filter(key => typeof name[key] === "string").map(key => [key, name[key]])))
+      .filter(name => name.literal || name.family || name.given),
+    journal: cleanText(item.journal),
+    publisher: cleanText(item.publisher),
+    year: cleanText(item.year),
+    volume: cleanText(item.volume),
+    issue: cleanText(item.issue),
+    pages: cleanText(item.pages),
+    doi: normalizeDoi(item.doi) || null,
+    isbn: cleanText(item.isbn),
+    type: cleanText(item.type) ?? "article-journal",
+    abstract: cleanText(item.abstract),
+    pdfUrl: typeof item.pdfUrl === "string" && /^https?:\/\//i.test(item.pdfUrl) ? item.pdfUrl : null,
+    readingStatus: READING_STATUSES.some(([value]) => value === item.readingStatus) ? item.readingStatus : "unread",
+    collections: cleanLabels(item.collections),
+    tags: cleanLabels(item.tags),
+    savedAt: typeof item.savedAt === "string" && Number.isFinite(Date.parse(item.savedAt))
+      ? item.savedAt : new Date().toISOString(),
+  }
+}
 
 export const getLibrary = async () => {
   const items = await db.references.orderBy("savedAt").reverse().toArray()
   return items.filter(isValidEntry)
 }
 
-export const isInLibrary = async (doi) => {
-  if (!doi) return false
-  return (await getSavedDois()).has(normalizeDoi(doi))
-}
-
-// Batch version — jauh lebih cepat daripada memanggil isInLibrary() satu-satu
-// dalam loop (mis. untuk menandai status "Tersimpan" di hasil batch search).
-export const getSavedDois = async () => {
+export const getSavedMatches = async candidates => {
   const items = await db.references.toArray()
-  return new Set(items.map(i => normalizeDoi(i.doi)).filter(Boolean))
+  return new Set(candidates.filter(candidate => items.some(item => duplicateScore(item, candidate) >= 2)))
 }
 
 export const saveToLibrary = async (metadata) => {
@@ -148,7 +155,9 @@ export const saveToLibrary = async (metadata) => {
       if (entries.some(item => duplicateScore(item, metadata) >= 2)) {
         return { ok: false, reason: "duplicate" }
       }
-      await db.references.add(sanitizeEntry({ ...metadata, id: crypto.randomUUID() }))
+      const entry = sanitizeEntry({ ...metadata, id: crypto.randomUUID() })
+      if (!isValidEntry(entry)) return { ok: false, reason: "invalid" }
+      await db.references.add(entry)
       return { ok: true, reason: null }
     })
   } catch {
@@ -170,7 +179,7 @@ export const mergeReferences = async (keepId, otherId) => {
   return db.transaction("rw", db.references, db.notes, db.attachments, async () => {
     const [keep, other] = await db.references.bulkGet([keepId, otherId])
     if (!keep || !other) return false
-    for (const key of ["journal", "publisher", "year", "volume", "issue", "pages", "doi", "isbn", "abstract"]) {
+    for (const key of ["journal", "publisher", "year", "volume", "issue", "pages", "doi", "isbn", "abstract", "pdfUrl"]) {
       if (!keep[key] && other[key]) keep[key] = other[key]
     }
     if (!keep.authors.length) {
@@ -408,8 +417,8 @@ export const importLibraryFromJson = async (jsonText) => {
       let skipped = 0, duplicates = 0
       for (const raw of parsed) {
         if (!isValidEntry({ ...raw, id: raw?.id ?? "tmp" })) { skipped++; continue }
-        if (existing.some(item => duplicateScore(item, raw) >= 2)) { duplicates++; continue }
         const entry = sanitizeEntry({ ...raw, id: crypto.randomUUID() })
+        if (existing.some(item => duplicateScore(item, entry) >= 2)) { duplicates++; continue }
         existing.push(entry)
         toAdd.push(entry)
       }

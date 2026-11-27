@@ -126,20 +126,29 @@ export default function LibraryPanel() {
   }
 
   const toggleAll = () => {
-    setSelectedIds(allSelected ? new Set() : new Set(allIds))
+    toggleGroup(allIds)
   }
 
   const handleRemove = async (id, e) => {
-    e.stopPropagation()
-    await removeFromLibrary(id)
+    e?.stopPropagation()
+    const item = items.find(reference => reference.id === id)
+    if (!window.confirm(`Hapus “${item?.title}” beserta lampiran PDF-nya?`)) return
+    if (!await removeFromLibrary(id)) {
+      setImportMsg("Gagal menghapus referensi.")
+      return
+    }
     setSelectedIds(prev => { const next = new Set(prev); next.delete(id); return next })
     await refresh()
+    return true
   }
 
   const handleRemoveSelected = async () => {
     if (selectedIds.size === 0) return
     if (!window.confirm(`Hapus ${selectedIds.size} referensi terpilih dari Library? Tindakan ini tidak bisa dibatalkan.`)) return
-    await removeManyFromLibrary([...selectedIds])
+    if (!await removeManyFromLibrary([...selectedIds])) {
+      setImportMsg("Gagal menghapus referensi.")
+      return
+    }
     setSelectedIds(new Set())
     await refresh()
   }
@@ -194,9 +203,7 @@ export default function LibraryPanel() {
         onBack={() => { setPdfTarget(null); setOpenItem(null) }}
         onUpdate={async () => { await refresh() }}
         onDelete={async () => {
-          await removeFromLibrary(openItem.id)
-          setSelectedIds(prev => { const next = new Set(prev); next.delete(openItem.id); return next })
-          await refresh()
+          if (!await handleRemove(openItem.id)) return
           setPdfTarget(null)
           setOpenItem(null)
         }}
