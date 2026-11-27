@@ -4,6 +4,8 @@ Ref Manager is a browser-based workspace for collecting references, reading and 
 
 [Open Ref Manager](https://ref-manager.alpaca.web.id)
 
+![Ref Manager in dark mode with three sample references, library filters, tags, and reading statuses](docs/screenshots/library-dark.png)
+
 ## Get started
 
 1. Open **Search** and enter a DOI or paper title. **Batch** accepts up to 50 DOIs and titles, one per line. DOI lookup checks Crossref and falls back to DataCite. Title search uses Crossref. When available, Unpaywall provides an open-access link and Open Library provides a book cover.
@@ -20,6 +22,14 @@ The responsive interface uses a black and silver palette. The **Light / Dark** c
 - **PDF reader.** Attach a local PDF and choose **Read PDF** to zoom, navigate pages, search text, highlight selections, or add comments and page notes. Use **Library → Search PDF contents** to search across local attachments. Text search and selection require a text layer. Scans without a text layer can be viewed as images. **Read PDF metadata** lets you review embedded title, author, and DOI before applying them. Annotations stay in Ref Manager. Downloading an attachment gives you the original PDF.
 - **Research notes.** Save notes, insights, and excerpts on their own or link them to several references. **Copy to notes** turns a PDF annotation into a research note.
 
+### Highlight a passage and save it to your notes
+
+1. Open a reference and choose **Attach PDF → Read PDF**.
+2. Select a passage and click **Highlight selected text**. Add a comment if useful, then choose **Save annotation**. For a comment about the whole page, choose **Add sticky note** instead.
+3. Under **Annotations on page**, choose **Copy to notes** to save the passage and comment as a linked research note.
+
+![PDF reader showing a highlighted passage and its saved comment in the annotations panel](docs/screenshots/pdf-annotations.png)
+
 ## Citations and document integrations
 
 Reference details offer APA 7, IEEE, Harvard (Cite Them Right), and Chicago Author–Date bibliography entries. Open **Library → Citation workspace** to arrange citation groups in document order, cite multiple sources together, and add locators, prefixes, suffixes, or author suppression. The bibliography updates as you edit the draft, which is saved in the browser. Chicago Notes–Bibliography is available in the workspace for footnotes.
@@ -27,6 +37,8 @@ Reference details offer APA 7, IEEE, Harvard (Cite Them Right), and Chicago Auth
 Copy formatted output with italics when the browser supports HTML clipboard data. Use **Add a CSL style** to import a `.csl` file or fetch a style by ID. Imported styles are available for the current workspace session. [CSL style catalog](https://www.zotero.org/styles)
 
 **Download Word document (.docx)** creates an editable draft in the browser. Use **Document text for export** to add text before a citation. Note styles generate native Word footnotes. **Download citation file** creates a separate JSON bundle for the integrations below and is available for in-text styles.
+
+![Citation workspace in light mode with an APA 7 citation, its bibliography entry, and download controls](docs/screenshots/citation-workspace.png)
 
 | Integration | Supported workflow |
 | --- | --- |
