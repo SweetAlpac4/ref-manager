@@ -65,7 +65,8 @@ insert.addEventListener("click", () => updateDocument(doc => {
 }, "Citation inserted."))
 
 bibliography.addEventListener("click", () => updateDocument(doc => {
-  doc.body.insertParagraph("Bibliography", Word.InsertLocation.end).styleBuiltIn = Word.BuiltInStyleName.heading1
+  const heading = doc.body.insertParagraph("Bibliography", Word.InsertLocation.end)
+  if (Office.context.requirements.isSetSupported("WordApi", "1.3")) heading.styleBuiltIn = "Heading1"
   for (const entry of bundle.bibliography) doc.body.insertParagraph(entry, Word.InsertLocation.end)
 }, "Bibliography appended."))
 
