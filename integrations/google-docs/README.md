@@ -9,6 +9,6 @@ This document-bound Apps Script adds a **Ref Manager** menu to an editable Googl
 5. In Ref Manager, open **Library → Citation workspace**. Select an in-text citation style and choose **Download citation file**.
 6. Load that JSON file in the sidebar. Place the cursor in the document and choose **Insert at cursor**. **Append bibliography** adds the bibliography at the end of the active tab.
 
-Inserted text is editable in Google Docs. If you change citation order or style, download a fresh file and replace earlier entries where needed. The JSON file contains only formatted citations and bibliography entries, plus the style name.
+Inserted text is editable in Google Docs. If you change citation order or style, download a fresh file and replace earlier entries where needed. The sidebar reads the formatted citations and bibliography entries. Bundles for supported built-in styles can also contain citation groups and reference metadata for the Word add-in.
 
 [Google's guide to document-bound Apps Script](https://developers.google.com/apps-script/guides/bound)

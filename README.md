@@ -1,53 +1,58 @@
 # Ref Manager
 
-Ref Manager helps you organize research references, read PDFs, and prepare citations. It runs in your browser and stores your library in IndexedDB. Run it locally or deploy the static build.
+Ref Manager is a browser-based workspace for collecting references, reading and annotating PDFs, and preparing citations. The local library works without an account. An optional private cloud library lets you access cloud references and PDFs from another device.
 
-## Manage your library
+[Open Ref Manager](https://ref-manager.alpaca.web.id)
 
-1. Open **Search** and look up a DOI or title. **Batch** accepts several searches at once. Metadata comes from Crossref and DataCite.
-2. Choose **Save to library**. To enter a source manually, open **Library → Add reference**. Open a reference to edit its metadata, abstract, collections, tags, and reading status.
-3. Combine smart collections such as **Unread**, **Without DOI**, and **Without local PDF** with search, publication year, tags, and collections. **Find duplicates** checks DOI, book ISBN, and similarities in title, author, and year. Merging keeps the selected record's existing values, fills missing metadata, and carries over collections, tags, notes, and attachments.
+## Get started
 
-## Read PDFs and take notes
+1. Open **Search** and enter a DOI or paper title. **Batch** accepts up to 50 DOIs and titles, one per line. DOI lookup checks Crossref and falls back to DataCite. Title search uses Crossref. When available, Unpaywall provides an open-access link and Open Library provides a book cover.
+2. Choose **Save to library**, or use **Library → Add reference** to enter a source manually.
+3. Open a saved reference to edit it, attach a PDF, add a note, or copy a formatted bibliography entry.
 
-- Open a reference and choose **Attach PDF → Read PDF**. Highlight selected text, add a comment or sticky note, or use **Copy to notes** to turn an annotation into a research note.
-- Search within the reader or choose **Library → Search PDF contents** to search all attachments and jump to matching pages. Search and highlighting require a text layer. Scanned pages can still be read as images.
-- **Read PDF metadata** shows the embedded title, author, and DOI when available. Review the suggestions and apply the fields you want to use.
-- **Research notes** supports personal notes, insights, and excerpts. A note can stand alone or link to several references. Annotations are stored in Ref Manager. Downloading an attachment returns the original PDF.
+The responsive interface uses a black and silver palette. The **Light / Dark** control follows your system preference until you choose a theme. Your choice is saved in the browser.
 
-## Cite sources
+## Library, PDFs, and notes
 
-A reference's detail page formats bibliography entries in APA 7, IEEE, Harvard (Cite Them Right), and Chicago Author–Date. In **Library → Citation workspace**, arrange your citations in document order. Add several sources to a citation, set a locator, or add a prefix or suffix. Choose Chicago Notes–Bibliography for footnotes.
+- **Metadata.** Edit the reference type, title, authors, publication, publisher, year, volume, issue, pages, DOI, ISBN, source URL, and abstract. Organize entries with collections, tags, and the **Unread**, **Reading**, and **Read** statuses.
+- **Filters.** Combine text search with collections, tags, reading status, publication year, or a built-in smart collection: **Recently added (30 days)**, **Unread**, **Without DOI**, and **Without local PDF**.
+- **Duplicate review.** **Find duplicates** checks DOI, book ISBN, and similarities in title, author, and year. A merge keeps the chosen reference, fills missing fields, combines labels, and moves linked notes and attachments to it.
+- **PDF reader.** Attach a local PDF and choose **Read PDF** to zoom, navigate pages, search text, highlight selections, or add comments and page notes. Use **Library → Search PDF contents** to search across local attachments. Text search and selection require a text layer. Scans without a text layer can be viewed as images. **Read PDF metadata** lets you review embedded title, author, and DOI before applying them. Annotations stay in Ref Manager. Downloading an attachment gives you the original PDF.
+- **Research notes.** Save notes, insights, and excerpts on their own or link them to several references. **Copy to notes** turns a PDF annotation into a research note.
 
-The bibliography updates from the sources in your draft. Copy the results into Word, LibreOffice, or Google Docs. Formatting such as italics is preserved when your browser supports HTML clipboard data. For more styles, import a `.csl` file or enter an ID from the [CSL style catalog](https://www.zotero.org/styles). Imported styles are available for the current workspace session. The library also exports BibTeX and RIS.
+## Citations and document integrations
 
-Use **Download Word document (.docx)** to export an editable draft with its citations and bibliography. You can add text before each citation under **Document text for export**. Note-based styles create native Word footnotes. The file is generated in your browser.
+Reference details offer APA 7, IEEE, Harvard (Cite Them Right), and Chicago Author–Date bibliography entries. Open **Library → Citation workspace** to arrange citation groups in document order, cite multiple sources together, and add locators, prefixes, suffixes, or author suppression. The bibliography updates as you edit the draft, which is saved in the browser. Chicago Notes–Bibliography is available in the workspace for footnotes.
 
-### Insert citations in Google Docs
+Copy formatted output with italics when the browser supports HTML clipboard data. Use **Add a CSL style** to import a `.csl` file or fetch a style by ID. Imported styles are available for the current workspace session. [CSL style catalog](https://www.zotero.org/styles)
 
-Use **Download citation file** in an in-text style. Install the [document-bound Ref Manager sidebar](integrations/google-docs/README.md) in an editable Google Doc, load the exported JSON, and insert a citation at the cursor or append the bibliography. The sidebar uses plain text. For native footnotes, export a Word document.
+**Download Word document (.docx)** creates an editable draft in the browser. Use **Document text for export** to add text before a citation. Note styles generate native Word footnotes. **Download citation file** creates a separate JSON bundle for the integrations below and is available for in-text styles.
 
-### Insert citations in Word
+| Integration | Supported workflow |
+| --- | --- |
+| [Microsoft Word](integrations/word/README.md) | Sideload the manifest from an HTTPS deployment. With WordApi 1.3 and a built-in in-text style, insert linked citations, then re-export the same draft and use **Refresh citations and bibliography**. Refresh follows the order in the document. WordApi 1.1, custom styles, and older bundles without linked data use plain-text insertion. |
+| [Google Docs](integrations/google-docs/README.md) | Install the Apps Script sidebar in each editable document. Load the citation file to insert plain text at the cursor or append a bibliography. Replace inserted text manually when citations change. |
+| [LibreOffice Writer](integrations/libreoffice/README.md) | Install the Python macros in your LibreOffice profile. Load the citation file to insert plain text at the cursor or append a bibliography. Replace inserted text manually when citations change. |
 
-On the HTTPS deployment, download the **Word add-in manifest** from the citation workspace. Sideload the add-in and load a citation file to insert citations and a bibliography. For supported Word clients and built-in in-text styles, export the same draft again and use **Refresh citations and bibliography** to update the linked fields. [Word setup and compatibility](integrations/word/README.md)
+## Export and backup
 
-### Insert citations in LibreOffice Writer
+| Option | What it contains |
+| --- | --- |
+| **Export references → BibTeX or RIS** | Bibliographic records for the selected references or the whole library when nothing is selected. |
+| **Export references → JSON** | Reference metadata, collections, tags, and reading status. Use **Import .json** to bring these records into another library. |
+| **Library → Library backup** | The local workspace, including reference records, research notes, PDF files, and annotations. On restore, matching records keep their metadata and gain any additional collection and tag memberships. |
 
-Install the [Writer Python macros](integrations/libreoffice/README.md) in your LibreOffice user profile. Run a macro to load a citation file and insert a chosen citation or append its bibliography.
+Local data lives in IndexedDB in the current browser profile and site origin. Keep a workspace backup before clearing site data, changing domains, or moving to another browser. Online metadata lookup, open-access links, and fetching styles from the catalog require a connection.
 
-## Back up and move your library
+## Optional cloud library
 
-Open **Library → Library backup** to download a JSON file containing references, collections, tags, notes, PDFs, and annotations. Restore it in another browser to move your library. When a reference already exists in the destination, the restore keeps its data and adds collection and tag memberships. The regular JSON export contains references only.
+Open **Library → Cloud library** and sign in to a configured Supabase deployment. You can create cloud references or copy reference metadata between the local and cloud libraries. Copies are independent. The cloud side stores collections, tags, reading status, and one note per reference.
 
-The personal library runs without an account or a VPS. Backups can be transferred manually. Online metadata search and fetching styles from the CSL catalog require internet access.
+Cloud records are scoped to your account. The view shows when it last checked for updates and refreshes every 30 seconds while open, when you return to the tab, and after writes. If another edit changes the revision, the app keeps your draft and lets you compare overlapping fields before saving.
 
-## Personal cloud library
+A cloud reference supports one private PDF up to 20 MB. Upload it from the cloud reference, then open it via a short-lived link or download it on another device. Remove its cloud PDF before deleting the reference. Use a workspace backup to transfer local PDF annotations and research notes. [Cloud setup and migrations](supabase/README.md)
 
-Ref Manager works without an account. **Library → Cloud library** offers an optional private account for storing references, collections, tags, reading status, and a note per reference across devices. Copy references explicitly between the browser library and the cloud library. A cloud reference can hold one private PDF up to 20 MB. Use a workspace backup to transfer local notes and PDF annotations.
-
-The cloud view refreshes while open and checks the revision before saving an edit. If a revision conflicts, it keeps your draft so you can compare it with the latest version before saving. Self-service accounts require a configured Supabase project. [Cloud setup guide](supabase/README.md)
-
-## Develop locally
+## Run locally
 
 Use Node.js 24 and npm.
 
@@ -56,7 +61,11 @@ npm ci
 npm run dev
 ```
 
-Run these checks before pushing.
+Open the URL printed by Vite. The local library works without environment variables. To enable the cloud library, configure a Supabase project, apply the repository migrations, and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in `.env.local`. [Environment template](.env.example)
+
+The app uses React and Vite, Dexie over IndexedDB for browser storage, and PDF.js for reading attachments. Citation.js and citeproc format CSL styles, and `docx` generates Word files. Supabase provides optional email/password authentication, PostgreSQL storage, and private PDF storage.
+
+## Checks
 
 ```sh
 npm run lint
@@ -67,8 +76,10 @@ npm run test:word
 npm run build
 ```
 
-The static build is written to `dist/`. Citation tests cover a journal article across the built-in styles, an APA edited book and missing year, APA year disambiguation, IEEE numbering, and Chicago footnotes.
+These checks cover citation styles, numbering and footnotes, local-to-cloud metadata round trips, library filtering and backups, conflict recovery, and Word citation refresh logic. `npm run test:cloud` separately checks account isolation, stale revisions, and private PDF access against a local Supabase stack. The Word tests exercise formatting and refresh logic in Node. Use a supported Word client to check sideloading and document insertion. [Local cloud test setup](supabase/README.md#test-locally)
 
-### Release on Vercel
+## Deploy
 
-Commit each feature separately and push it to `dev`. The `vercel.json` configuration skips automatic deployments for that branch. When ready to release, merge `dev` into the `master` production branch without squashing and push once. Vercel builds the combined changes from `master`. Use `git revert` to roll back a feature commit while preserving history.
+`npm run build` writes the static app and the Word task pane to `dist/`. Use `npm run preview` to check the build locally. For a self-hosted deployment, serve the output over HTTPS to enable downloading the Word add-in manifest.
+
+On Vercel, use the Vite preset and `dist` as the output directory. Set the optional cloud variables in the target environment before building. `vercel.json` disables automatic deployment for `dev`. For Git-based releases, use the production branch configured in the Vercel project. From a checkout linked to the correct project, you can also deploy directly with `vercel deploy --prod`. [Vite on Vercel](https://vercel.com/docs/frameworks/frontend/vite) · [Vercel CLI deploy guide](https://vercel.com/docs/cli/deploy)
