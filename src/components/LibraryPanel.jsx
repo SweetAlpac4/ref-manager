@@ -11,6 +11,7 @@ import NotesPanel from "./NotesPanel"
 import MetadataEditor from "./MetadataEditor"
 import ReferenceDetail from "./ReferenceDetail"
 
+const TeamLibrary = lazy(() => import("./TeamLibrary"))
 const PdfLibrarySearch = lazy(() => import("./PdfLibrarySearch"))
 
 const dateKey = (isoString) => (isoString || "").slice(0, 10) // "2026-09-14"
@@ -28,6 +29,7 @@ export default function LibraryPanel() {
   const [openItem, setOpenItem] = useState(null)
   const [importMsg, setImportMsg] = useState("")
   const [showDuplicates, setShowDuplicates] = useState(false)
+  const [showTeam, setShowTeam] = useState(false)
   const [showPdfSearch, setShowPdfSearch] = useState(false)
   const [pdfTarget, setPdfTarget] = useState(null)
   const [showCitations, setShowCitations] = useState(false)
@@ -163,6 +165,10 @@ export default function LibraryPanel() {
   const exportIds = selectedIds.size > 0 ? [...selectedIds] : null
   const exportCountLabel = selectedIds.size > 0 ? `${selectedIds.size} selected` : "all"
 
+  if (showTeam) return <Suspense fallback={<p>Loading team library…</p>}>
+    <TeamLibrary personalReferences={items} onPersonalChange={refresh} onBack={() => setShowTeam(false)} />
+  </Suspense>
+
   if (showPdfSearch && !openItem) return <Suspense fallback={<p>Loading PDF search…</p>}>
     <PdfLibrarySearch references={items} onBack={() => setShowPdfSearch(false)}
       onOpen={(item, target) => { setPdfTarget(target); setOpenItem(item) }} />
@@ -243,6 +249,7 @@ export default function LibraryPanel() {
           <button className="link-pill" onClick={async () => downloadFile("library.bib", await exportLibraryAsBibtex(exportIds))}>Export .bib</button>
           <button className="link-pill" onClick={async () => downloadFile("library.ris", await exportLibraryAsRis(exportIds))}>Export .ris</button>
           <button className="link-pill" onClick={async () => downloadFile("library.json", await exportLibraryAsJson(exportIds), "application/json")}>Export .json</button>
+          <button className="link-pill" onClick={() => setShowTeam(true)}>Team library</button>
           <button className="link-pill" disabled={!items.length} onClick={() => setShowPdfSearch(true)}>Search PDF contents</button>
           <button className="link-pill" onClick={() => setShowCitations(true)}>Citation workspace</button>
           <button className="link-pill" onClick={() => setShowNotes(true)}>Research notes</button>

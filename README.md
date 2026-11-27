@@ -39,7 +39,13 @@ Install the [Writer Python macros](integrations/libreoffice/README.md) in your L
 
 Open **Library → Library backup** to download a JSON file containing references, collections, tags, notes, PDFs, and annotations. Restore it in another browser to move your library. When a reference already exists in the destination, the restore keeps its data and adds collection and tag memberships. The regular JSON export contains references only.
 
-Ref Manager runs without an account or a VPS. Backups can be transferred manually. Automatic sync and live collaboration are pending. Online metadata search and fetching styles from the CSL catalog require internet access.
+The personal library runs without an account or a VPS. Backups can be transferred manually. Online metadata search and fetching styles from the CSL catalog require internet access.
+
+## Shared team library
+
+One deployment can optionally connect to one private team library. Invited members can publish or edit references, write a shared note per reference, and save a personal copy. The team library refreshes every 30 seconds while open and checks the record revision before saving an edit. Personal notes, annotations, and PDF attachments stay in the browser.
+
+A dedicated Supabase project and member accounts are needed. See the [team library setup guide](supabase/README.md).
 
 ## Develop locally
 
