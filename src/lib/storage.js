@@ -211,6 +211,53 @@ export const removeFromLibrary = id => deleteReferences([id])
 export const removeManyFromLibrary = ids => deleteReferences(ids)
 export const clearLibrary = () => deleteReferences()
 
+export const getWorkspace = () => db.transaction("r", db.references, db.notes, db.attachments, async () => ({
+  references: await getLibrary(),
+  notes: await db.notes.toArray(),
+  attachments: await db.attachments.toArray(),
+}))
+
+export const restoreWorkspace = ({ references, notes, attachments }) =>
+  db.transaction("rw", db.references, db.notes, db.attachments, async () => {
+    const local = await getLibrary()
+    const referenceIds = new Map()
+    const localById = new Map(local.map(item => [item.id, item]))
+    const added = { references: 0, notes: 0, attachments: 0 }
+
+    for (const item of references) {
+      if (!isValidEntry(item)) throw new Error("Backup berisi referensi yang tidak valid.")
+      const entry = sanitizeEntry(item)
+      const match = localById.get(item.id) ?? local.find(existing => duplicateScore(existing, entry) >= 2)
+      referenceIds.set(item.id, match?.id ?? item.id)
+      if (match) {
+        const current = await db.references.get(match.id)
+        await db.references.update(match.id, {
+          collections: cleanLabels([...(current.collections ?? []), ...entry.collections]),
+          tags: cleanLabels([...(current.tags ?? []), ...entry.tags]),
+        })
+      } else {
+        await db.references.add(entry)
+        added.references++
+      }
+    }
+
+    for (const note of notes) {
+      if (await db.notes.get(note.id)) continue
+      await db.notes.add({
+        ...note,
+        referenceIds: [...new Set(note.referenceIds.map(id => referenceIds.get(id)))],
+      })
+      added.notes++
+    }
+
+    for (const attachment of attachments) {
+      if (await db.attachments.get(attachment.id)) continue
+      await db.attachments.add({ ...attachment, referenceId: referenceIds.get(attachment.referenceId) })
+      added.attachments++
+    }
+    return added
+  })
+
 // --- Export ---
 
 const escapeBibtex = (str) => (str || "").replace(/[{}]/g, "")

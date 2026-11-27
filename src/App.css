@@ -658,3 +658,12 @@ body {
 .bibliography-output p + p {
   margin-top: .5rem;
 }
+
+.library-backup {
+  text-align: start;
+  margin-block: .75rem;
+}
+
+.library-backup summary {
+  cursor: pointer;
+}

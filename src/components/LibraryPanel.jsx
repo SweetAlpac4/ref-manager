@@ -4,6 +4,7 @@ import {
   exportLibraryAsRis, exportLibraryAsJson, importLibraryFromJson,
 } from "../lib/storage"
 import { duplicateScore, normalizeText } from "../lib/duplicates"
+import LibraryBackup from "./LibraryBackup"
 import CitationWorkspace from "./CitationWorkspace"
 import NotesPanel from "./NotesPanel"
 import MetadataEditor from "./MetadataEditor"
@@ -196,24 +197,10 @@ export default function LibraryPanel() {
     return <div className="card library-empty"><p>Memuat library...</p></div>
   }
 
-  if (items.length === 0) {
-    return (
-      <div className="card library-empty">
-        <p>Belum ada referensi tersimpan. Cari referensi lalu klik &quot;Simpan ke Library&quot;.</p>
-        <div className="library-actions">
-          <button className="link-pill" onClick={() => setShowCitations(true)}>Ruang sitasi</button>
-          <button className="link-pill" onClick={() => setShowNotes(true)}>Catatan riset</button>
-          <button className="link-pill" onClick={() => setAdding(true)}>Tambah referensi</button>
-          <button className="link-pill" onClick={handleImportClick}>Impor dari JSON</button>
-          <input ref={fileInputRef} type="file" accept="application/json" hidden onChange={handleFileChange} />
-        </div>
-        {importMsg && <p className="import-msg">{importMsg}</p>}
-      </div>
-    )
-  }
-
   return (
     <div className="library-panel">
+      {items.length === 0 && <p>Belum ada referensi tersimpan. Cari atau tambahkan referensi untuk mulai.</p>}
+      <LibraryBackup onImport={refresh} download={downloadFile} />
       <div className="library-filters">
         <input type="search" aria-label="Cari library" placeholder="Cari judul, penulis, DOI, atau abstrak" value={query} onChange={event => setQuery(event.target.value)} />
         <select aria-label="Filter koleksi" value={collection} onChange={event => setCollection(event.target.value)}>
@@ -229,11 +216,11 @@ export default function LibraryPanel() {
           {READING_STATUSES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
       </div>
-      {visible.length === 0 && <p>Tidak ada referensi yang cocok.</p>}
+      {items.length > 0 && visible.length === 0 && <p>Tidak ada referensi yang cocok.</p>}
       <div className="library-toolbar">
         <div className="library-toolbar-left">
           <label className="checkbox-label">
-            <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+            <input type="checkbox" checked={allSelected} onChange={toggleAll} disabled={allIds.length === 0} />
             <span>Pilih yang terlihat ({visible.length})</span>
           </label>
           <p className="library-count">Ekspor: {exportCountLabel}</p>
@@ -256,7 +243,7 @@ export default function LibraryPanel() {
       </div>
       {importMsg && <p className="import-msg">{importMsg}</p>}
 
-      <button className="link-pill" onClick={() => setShowDuplicates(value => !value)}>
+      <button className="link-pill" disabled={items.length < 2} onClick={() => setShowDuplicates(value => !value)}>
         {showDuplicates ? "Tutup pemeriksaan" : "Cari duplikat"}
       </button>
       {showDuplicates && <div className="card">
