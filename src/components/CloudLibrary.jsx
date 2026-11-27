@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import MetadataEditor from "./MetadataEditor"
 import CloudConflict from "./CloudConflict"
+import CloudPdf from "./CloudPdf"
 import { cloudDraft, CloudRevisionConflict, hasCloudChanges } from "../lib/cloudChanges"
 import { normalizeText } from "../lib/duplicates"
 import { READING_STATUSES, saveToLibrary } from "../lib/storage"
@@ -129,7 +130,7 @@ function CloudReferences({ personalReferences, onPersonalChange }) {
     try {
       await action()
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "The cloud library request failed. Try again.")
+      setMessage(error?.code === "23514" || error instanceof Error ? error.message : "The cloud library request failed. Try again.")
     } finally {
       setBusy(false)
     }
@@ -242,6 +243,7 @@ function CloudReferences({ personalReferences, onPersonalChange }) {
               <button className="link-pill" disabled={busy}>Save cloud details</button>
             </form>
           </fieldset>
+          <CloudPdf key={selected.id} record={selected} />
         </>}
       </>}
       {!view && <>
@@ -262,7 +264,7 @@ function CloudReferences({ personalReferences, onPersonalChange }) {
           </select>
           <button className="link-pill" disabled={busy}>Copy reference to cloud</button>
         </form>}
-        <p>Cloud references are private to this account. Copy references from this browser to sync their metadata. PDFs, annotations, and existing local notes stay on this device.</p>
+        <p>Copy a reference to save its metadata to this account. Open a cloud reference to upload a private PDF. Use a library backup to move local annotations and notes.</p>
         {rows.filter(item => normalizeText(item.title).includes(normalizeText(query))).map(item =>
           <article className="note-item" key={item.id}>
             <button className="link-pill" disabled={busy} onClick={() => open(item.id)}>{item.title}</button>

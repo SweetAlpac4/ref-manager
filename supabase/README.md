@@ -16,4 +16,8 @@ The personal library works locally without an account. A dedicated Supabase proj
 
 5. Open **Library → Cloud library** and create an account. Add or copy a local reference to test cloud edits. Sign in to the same account in another browser to verify the reference appears. Sign in to a different account to verify it has a separate library.
 
-Cloud records refresh every 30 seconds while the view is open, when you return to the tab, and after writes. The revision check rejects stale changes. References, collection names, tags, reading status, and the per-reference cloud note are stored per account. Local references can be copied to and from the cloud view. PDFs, annotations, and existing local notes stay on the device and can be transferred in a library backup.
+Cloud records refresh every 30 seconds while the view is open, when you return to the tab, and after writes. The revision check preserves a draft for review when another device has saved changes. References, collection names, tags, reading status, and the per-reference cloud note are stored per account. Local references can be copied to and from the cloud view.
+
+Apply the private PDF migration before using the updated cloud library. It creates the private bucket and restricts access by account. A cloud reference supports one PDF up to 20 MB. Delete its cloud attachment before deleting the reference. Local attachments, annotations, and notes can be transferred in a workspace backup.
+
+To verify account isolation, apply the migrations in a local Supabase stack with email confirmation disabled. Set `SUPABASE_TEST_KEY` to its publishable key and run `npm run test:cloud` from the repository root. Set `SUPABASE_TEST_URL` if the API uses a local port other than 54321.
