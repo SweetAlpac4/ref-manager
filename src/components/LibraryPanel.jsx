@@ -1,9 +1,10 @@
 import { useRef, useState, useEffect, useMemo } from "react"
 import {
-  mergeReferences, getLibrary, removeFromLibrary, removeManyFromLibrary, exportLibraryAsBibtex,
+  mergeReferences, getLibrary, saveToLibrary, removeFromLibrary, removeManyFromLibrary, exportLibraryAsBibtex,
   exportLibraryAsRis, exportLibraryAsJson, importLibraryFromJson,
 } from "../lib/storage"
 import { duplicateScore, normalizeText } from "../lib/duplicates"
+import MetadataEditor from "./MetadataEditor"
 import ReferenceDetail from "./ReferenceDetail"
 
 const downloadFile = (filename, content, mime = "text/plain") => {
@@ -31,6 +32,7 @@ export default function LibraryPanel() {
   const [openItem, setOpenItem] = useState(null)
   const [importMsg, setImportMsg] = useState("")
   const [showDuplicates, setShowDuplicates] = useState(false)
+  const [adding, setAdding] = useState(false)
   const [query, setQuery] = useState("")
   const [collection, setCollection] = useState("")
   const [tag, setTag] = useState("")
@@ -151,6 +153,19 @@ export default function LibraryPanel() {
   const exportIds = selectedIds.size > 0 ? [...selectedIds] : null
   const exportCountLabel = selectedIds.size > 0 ? `${selectedIds.size} terpilih` : "semua"
 
+  if (adding) {
+    return <div className="card">
+      <h2>Tambah referensi</h2>
+      <MetadataEditor onCancel={() => setAdding(false)} onSave={async changes => {
+        const result = await saveToLibrary(changes)
+        if (!result.ok) throw new Error(result.reason === "duplicate"
+          ? "Referensi ini sudah ada di library." : "Gagal menyimpan referensi.")
+        await refresh()
+        setAdding(false)
+      }} />
+    </div>
+  }
+
   if (openItem) {
     return (
       <ReferenceDetail
@@ -177,6 +192,7 @@ export default function LibraryPanel() {
       <div className="card library-empty">
         <p>Belum ada referensi tersimpan. Cari referensi lalu klik &quot;Simpan ke Library&quot;.</p>
         <div className="library-actions">
+          <button className="link-pill" onClick={() => setAdding(true)}>Tambah referensi</button>
           <button className="link-pill" onClick={handleImportClick}>Impor dari JSON</button>
           <input ref={fileInputRef} type="file" accept="application/json" hidden onChange={handleFileChange} />
         </div>
@@ -216,6 +232,7 @@ export default function LibraryPanel() {
           <button className="link-pill" onClick={async () => downloadFile("library.bib", await exportLibraryAsBibtex(exportIds))}>Ekspor .bib</button>
           <button className="link-pill" onClick={async () => downloadFile("library.ris", await exportLibraryAsRis(exportIds))}>Ekspor .ris</button>
           <button className="link-pill" onClick={async () => downloadFile("library.json", await exportLibraryAsJson(exportIds), "application/json")}>Ekspor .json</button>
+          <button className="link-pill" onClick={() => setAdding(true)}>Tambah referensi</button>
           <button className="link-pill" onClick={handleImportClick}>Impor .json</button>
           <input ref={fileInputRef} type="file" accept="application/json" hidden onChange={handleFileChange} />
         </div>

@@ -36,6 +36,7 @@ const sanitizeEntry = (item) => ({
   title: item.title,
   authors: Array.isArray(item.citationAuthors) ? item.citationAuthors : (item.authors || []),
   citationAuthors: Array.isArray(item.citationAuthors) ? item.citationAuthors : (item.authors || []),
+  contributorRole: item.contributorRole === "editor" ? "editor" : "author",
   authorsStructured: Array.isArray(item.authorsStructured) ? item.authorsStructured : null,
   journal: item.journal ?? null,
   year: item.year ?? null,
@@ -46,6 +47,7 @@ const sanitizeEntry = (item) => ({
   isbn: item.isbn ?? null,
   type: item.type ?? "article-journal",
   abstract: item.abstract ?? null,
+  pdfUrl: typeof item.pdfUrl === "string" && /^https?:\/\//i.test(item.pdfUrl) ? item.pdfUrl : null,
   collections: cleanLabels(item.collections),
   tags: cleanLabels(item.tags),
   savedAt: item.savedAt ?? new Date().toISOString(),
@@ -101,6 +103,7 @@ export const mergeReferences = async (keepId, otherId) => {
       if (!keep[key] && other[key]) keep[key] = other[key]
     }
     if (!keep.authors.length) {
+      keep.contributorRole = other.contributorRole
       keep.authors = other.authors
       keep.citationAuthors = other.citationAuthors
       keep.authorsStructured = other.authorsStructured

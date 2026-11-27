@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react"
 import { lookupOpenAccessPdf, fetchThumbnail } from "../lib/crossref"
 import { initCitationStyles, formatCitation, STYLES } from "../lib/citation"
 import { saveToLibrary, isInLibrary, updateReference } from "../lib/storage"
+import MetadataEditor from "./MetadataEditor"
 import { CopyIcon, CheckIcon, BookIcon, ArrowLeftIcon } from "./icons"
 
 // PENTING: kalau dipakai untuk menampilkan item yang berbeda-beda (mis. dari list
@@ -10,6 +11,8 @@ import { CopyIcon, CheckIcon, BookIcon, ArrowLeftIcon } from "./icons"
 // item yang baru, bukan nyangkut ke data item sebelumnya.
 export default function ReferenceDetail({ metadata: initialMetadata, onBack, onSaveChange, onDelete, onUpdate }) {
   const [metadata, setMetadata] = useState(initialMetadata)
+  const [editing, setEditing] = useState(false)
+  const [saveMessage, setSaveMessage] = useState("")
   const [thumbnail, setThumbnail] = useState(null)
   const [selectedStyle, setSelectedStyle] = useState("ieee")
   const [copied, setCopied] = useState(false)
@@ -28,7 +31,7 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
 
     if (initialMetadata?.doi && !initialMetadata.pdfUrl) {
       lookupOpenAccessPdf(initialMetadata.doi).then(url => {
-        if (url) setMetadata(prev => (prev ? { ...prev, pdfUrl: url } : prev))
+        if (url) setMetadata(prev => prev?.doi === initialMetadata.doi ? { ...prev, pdfUrl: url } : prev)
       })
     }
     if (initialMetadata?.isbn) {
@@ -65,7 +68,16 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
     if (res.ok || res.reason === "duplicate") {
       setSaved(true)
       onSaveChange?.()
+    } else {
+      setSaveMessage("Gagal menyimpan referensi.")
     }
+  }
+
+  const saveChanges = async changes => {
+    const updated = await updateReference(metadata.id, changes)
+    setMetadata(previous => ({ ...previous, ...updated,
+      pdfUrl: updated.doi === previous.doi ? updated.pdfUrl ?? previous.pdfUrl : updated.pdfUrl }))
+    await onUpdate()
   }
 
   if (!metadata) return null
@@ -114,11 +126,15 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
             )}
           </div>
 
-          {onUpdate && <ReferenceOrganization metadata={metadata} onSave={async changes => {
-            const updated = await updateReference(metadata.id, changes)
-            setMetadata(previous => ({ ...previous, ...updated }))
-            await onUpdate()
-          }} />}
+          {saveMessage && <p role="alert">{saveMessage}</p>}
+          {onUpdate && <>
+            <button className="link-pill" onClick={() => setEditing(!editing)}>Edit metadata</button>
+            {editing && <MetadataEditor metadata={metadata} onCancel={() => setEditing(false)} onSave={async changes => {
+              await saveChanges(changes.doi !== metadata.doi ? { ...changes, pdfUrl: null } : changes)
+              setEditing(false)
+            }} />}
+            <ReferenceOrganization metadata={metadata} onSave={saveChanges} />
+          </>}
 
           {metadata.abstract && (
             <div className="abstract-section">
