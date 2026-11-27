@@ -1,7 +1,7 @@
 {
   "name": "ref-manager",
   "short_name": "ref-manager",
-  "description": "Metadata jurnal lengkap, format daftar pustaka instan.",
+  "description": "Find references, organize your research, and format citations.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0d",

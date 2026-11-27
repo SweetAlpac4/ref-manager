@@ -25,9 +25,9 @@ const downloadFile = (filename, content, mime = "text/plain") => {
 const dateKey = (isoString) => (isoString || "").slice(0, 10) // "2026-09-14"
 
 const dateLabel = (key) => {
-  if (!key) return "Tanggal tidak diketahui"
+  if (!key) return "Unknown date"
   const d = new Date(`${key}T00:00:00`)
-  return d.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
+  return d.toLocaleDateString("en", { day: "numeric", month: "long", year: "numeric" })
 }
 
 export default function LibraryPanel() {
@@ -90,14 +90,14 @@ export default function LibraryPanel() {
     : [], [items, showDuplicates])
 
   const mergePair = async (keep, other) => {
-    if (!window.confirm(`Pertahankan “${keep.title}” dan isi metadata yang kosong dari “${other.title}”?`)) return
+    if (!window.confirm(`Keep “${keep.title}” and fill missing metadata from “${other.title}”?`)) return
     try {
       if (!await mergeReferences(keep.id, other.id)) throw new Error()
       setSelectedIds(new Set())
       await refresh()
-      setImportMsg("Referensi digabung.")
+      setImportMsg("References merged.")
     } catch {
-      setImportMsg("Gagal menggabungkan referensi.")
+      setImportMsg("Could not merge the references.")
     }
   }
 
@@ -132,9 +132,9 @@ export default function LibraryPanel() {
   const handleRemove = async (id, e) => {
     e?.stopPropagation()
     const item = items.find(reference => reference.id === id)
-    if (!window.confirm(`Hapus “${item?.title}” beserta lampiran PDF-nya?`)) return
+    if (!window.confirm(`Delete “${item?.title}” and its PDF attachments?`)) return
     if (!await removeFromLibrary(id)) {
-      setImportMsg("Gagal menghapus referensi.")
+      setImportMsg("Could not delete the reference.")
       return
     }
     setSelectedIds(prev => { const next = new Set(prev); next.delete(id); return next })
@@ -144,9 +144,9 @@ export default function LibraryPanel() {
 
   const handleRemoveSelected = async () => {
     if (selectedIds.size === 0) return
-    if (!window.confirm(`Hapus ${selectedIds.size} referensi terpilih dari Library? Tindakan ini tidak bisa dibatalkan.`)) return
+    if (!window.confirm(`Delete the selected references (${selectedIds.size}) and their PDF attachments from the library? This cannot be undone.`)) return
     if (!await removeManyFromLibrary([...selectedIds])) {
-      setImportMsg("Gagal menghapus referensi.")
+      setImportMsg("Could not delete the reference.")
       return
     }
     setSelectedIds(new Set())
@@ -161,18 +161,18 @@ export default function LibraryPanel() {
     const text = await file.text()
     const result = await importLibraryFromJson(text)
     if (!result.ok) {
-      setImportMsg(result.error || "Gagal mengimpor file.")
+      setImportMsg(result.error || "Could not import the file.")
     } else {
-      setImportMsg(`Berhasil: ${result.added} ditambahkan, ${result.duplicates} duplikat dilewati, ${result.skipped} tidak valid.`)
+      setImportMsg(`Added: ${result.added}. Duplicates skipped: ${result.duplicates}. Invalid entries: ${result.skipped}.`)
       await refresh()
     }
     e.target.value = ""
   }
 
   const exportIds = selectedIds.size > 0 ? [...selectedIds] : null
-  const exportCountLabel = selectedIds.size > 0 ? `${selectedIds.size} terpilih` : "semua"
+  const exportCountLabel = selectedIds.size > 0 ? `${selectedIds.size} selected` : "all"
 
-  if (showPdfSearch && !openItem) return <Suspense fallback={<p>Memuat pencarian PDF…</p>}>
+  if (showPdfSearch && !openItem) return <Suspense fallback={<p>Loading PDF search…</p>}>
     <PdfLibrarySearch references={items} onBack={() => setShowPdfSearch(false)}
       onOpen={(item, target) => { setPdfTarget(target); setOpenItem(item) }} />
   </Suspense>
@@ -183,11 +183,11 @@ export default function LibraryPanel() {
 
   if (adding) {
     return <div className="card">
-      <h2>Tambah referensi</h2>
+      <h2>Add reference</h2>
       <MetadataEditor onCancel={() => setAdding(false)} onSave={async changes => {
         const result = await saveToLibrary(changes)
         if (!result.ok) throw new Error(result.reason === "duplicate"
-          ? "Referensi ini sudah ada di library." : "Gagal menyimpan referensi.")
+          ? "This reference is already in the library." : "Could not save the reference.")
         await refresh()
         setAdding(false)
       }} />
@@ -212,68 +212,68 @@ export default function LibraryPanel() {
   }
 
   if (loading) {
-    return <div className="card library-empty"><p>Memuat library...</p></div>
+    return <div className="card library-empty"><p>Loading library…</p></div>
   }
 
   return (
     <div className="library-panel">
-      {items.length === 0 && <p>Belum ada referensi tersimpan. Cari atau tambahkan referensi untuk mulai.</p>}
+      {items.length === 0 && <p>Search for a reference or add one manually to start your library.</p>}
       <LibraryBackup onImport={refresh} download={downloadFile} />
       <div className="library-filters">
-        <input type="search" aria-label="Cari library" placeholder="Cari judul, penulis, DOI, atau abstrak" value={query} onChange={event => setQuery(event.target.value)} />
-        <select aria-label="Filter koleksi" value={collection} onChange={event => setCollection(event.target.value)}>
-          <option value="">Semua koleksi</option>
+        <input type="search" aria-label="Search library" placeholder="Search title, author, DOI, or abstract" value={query} onChange={event => setQuery(event.target.value)} />
+        <select aria-label="Filter by collection" value={collection} onChange={event => setCollection(event.target.value)}>
+          <option value="">All collections</option>
           {collections.map(value => <option key={value}>{value}</option>)}
         </select>
-        <select aria-label="Filter tag" value={tag} onChange={event => setTag(event.target.value)}>
-          <option value="">Semua tag</option>
+        <select aria-label="Filter by tag" value={tag} onChange={event => setTag(event.target.value)}>
+          <option value="">All tags</option>
           {tags.map(value => <option key={value}>{value}</option>)}
         </select>
-        <select aria-label="Filter status baca" value={readingStatus} onChange={event => setReadingStatus(event.target.value)}>
-          <option value="">Semua status baca</option>
+        <select aria-label="Filter by reading status" value={readingStatus} onChange={event => setReadingStatus(event.target.value)}>
+          <option value="">All reading statuses</option>
           {READING_STATUSES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
       </div>
-      {items.length > 0 && visible.length === 0 && <p>Tidak ada referensi yang cocok.</p>}
+      {items.length > 0 && visible.length === 0 && <p>No matching references.</p>}
       <div className="library-toolbar">
         <div className="library-toolbar-left">
           <label className="checkbox-label">
             <input type="checkbox" checked={allSelected} onChange={toggleAll} disabled={allIds.length === 0} />
-            <span>Pilih yang terlihat ({visible.length})</span>
+            <span>Select visible references ({visible.length})</span>
           </label>
-          <p className="library-count">Ekspor: {exportCountLabel}</p>
+          <p className="library-count">Export: {exportCountLabel}</p>
         </div>
         <div className="library-actions">
           {selectedIds.size > 0 && (
             <button className="link-pill link-pill-danger" onClick={handleRemoveSelected}>
-              Hapus yang Dipilih ({selectedIds.size})
+              Delete selected ({selectedIds.size})
             </button>
           )}
-          <button className="link-pill" onClick={async () => downloadFile("library.bib", await exportLibraryAsBibtex(exportIds))}>Ekspor .bib</button>
-          <button className="link-pill" onClick={async () => downloadFile("library.ris", await exportLibraryAsRis(exportIds))}>Ekspor .ris</button>
-          <button className="link-pill" onClick={async () => downloadFile("library.json", await exportLibraryAsJson(exportIds), "application/json")}>Ekspor .json</button>
-          <button className="link-pill" disabled={!items.length} onClick={() => setShowPdfSearch(true)}>Cari isi PDF</button>
-          <button className="link-pill" onClick={() => setShowCitations(true)}>Ruang sitasi</button>
-          <button className="link-pill" onClick={() => setShowNotes(true)}>Catatan riset</button>
-          <button className="link-pill" onClick={() => setAdding(true)}>Tambah referensi</button>
-          <button className="link-pill" onClick={handleImportClick}>Impor .json</button>
+          <button className="link-pill" onClick={async () => downloadFile("library.bib", await exportLibraryAsBibtex(exportIds))}>Export .bib</button>
+          <button className="link-pill" onClick={async () => downloadFile("library.ris", await exportLibraryAsRis(exportIds))}>Export .ris</button>
+          <button className="link-pill" onClick={async () => downloadFile("library.json", await exportLibraryAsJson(exportIds), "application/json")}>Export .json</button>
+          <button className="link-pill" disabled={!items.length} onClick={() => setShowPdfSearch(true)}>Search PDF contents</button>
+          <button className="link-pill" onClick={() => setShowCitations(true)}>Citation workspace</button>
+          <button className="link-pill" onClick={() => setShowNotes(true)}>Research notes</button>
+          <button className="link-pill" onClick={() => setAdding(true)}>Add reference</button>
+          <button className="link-pill" onClick={handleImportClick}>Import .json</button>
           <input ref={fileInputRef} type="file" accept="application/json" hidden onChange={handleFileChange} />
         </div>
       </div>
       {importMsg && <p className="import-msg">{importMsg}</p>}
 
       <button className="link-pill" disabled={items.length < 2} onClick={() => setShowDuplicates(value => !value)}>
-        {showDuplicates ? "Tutup pemeriksaan" : "Cari duplikat"}
+        {showDuplicates ? "Close duplicate review" : "Find duplicates"}
       </button>
       {showDuplicates && <div className="card">
-        {duplicatePairs.length === 0 && <p>Tidak ada kandidat duplikat.</p>}
+        {duplicatePairs.length === 0 && <p>No potential duplicates found.</p>}
         {duplicatePairs.map(([first, second]) => <div key={first.id + second.id}>
           {[first, second].map((item, index) => <div key={item.id}>
             <button className="link-pill" onClick={() => setOpenItem(item)}>
               {item.title} · {item.authors.join(", ")} · {item.year} {item.doi}
             </button>
             <button className="link-pill" onClick={() => mergePair(item, [second, first][index])}>
-              Pertahankan referensi ini
+              Keep this reference
             </button>
           </div>)}
         </div>)}
@@ -289,7 +289,7 @@ export default function LibraryPanel() {
                 <input type="checkbox" checked={groupAllSelected} onChange={() => toggleGroup(groupIds)} />
                 <span>{dateLabel(key)}</span>
               </label>
-              <span className="date-group-count">{groupItems.length} referensi</span>
+              <span className="date-group-count">{groupItems.length} {groupItems.length === 1 ? "reference" : "references"}</span>
             </div>
             <ul className="library-list">
               {groupItems.map(item => (
@@ -312,7 +312,7 @@ export default function LibraryPanel() {
                       {item.journal ? ` · ${item.journal}` : ""}
                     </p>
                   </div>
-                  <button className="remove-btn" onClick={(e) => handleRemove(item.id, e)} aria-label="Hapus">✕</button>
+                  <button className="remove-btn" onClick={(e) => handleRemove(item.id, e)} aria-label="Delete">✕</button>
                 </li>
               ))}
             </ul>

@@ -39,8 +39,8 @@ export default function App() {
 
       if (!result) {
         setErrorMsg(mode === "doi"
-          ? "DOI tidak ditemukan di CrossRef maupun DataCite. Pastikan DOI sudah benar."
-          : "Judul tidak ditemukan. Coba gunakan judul yang lebih spesifik."
+          ? "No matching DOI was found in Crossref or DataCite. Check the DOI and try again."
+          : "No matching title was found. Try a more specific title."
         )
         setStatus("error")
         return
@@ -50,7 +50,7 @@ export default function App() {
       setStatus("success")
     } catch {
       if (token !== requestToken.current) return
-      setErrorMsg("Terjadi kesalahan. Periksa koneksi internet dan coba lagi.")
+      setErrorMsg("Something went wrong. Check your internet connection and try again.")
       setStatus("error")
     }
   }
@@ -101,11 +101,11 @@ export default function App() {
 
         <header className="header">
           <div className="logo"><span className="logo-rose">ref</span><span className="logo-blue">-manager</span></div>
-          <p className="tagline">Metadata jurnal lengkap, format daftar pustaka instan.</p>
+          <p className="tagline">Find references, organize your research, and format citations.</p>
         </header>
 
         <div className="top-tabs">
-          <button className={`top-tab ${tab === "search" ? "active" : ""}`} onClick={() => switchTab("search")}>Cari</button>
+          <button className={`top-tab ${tab === "search" ? "active" : ""}`} onClick={() => switchTab("search")}>Search</button>
           <button className={`top-tab ${tab === "library" ? "active" : ""}`} onClick={() => switchTab("library")}>Library</button>
         </div>
 
@@ -114,8 +114,8 @@ export default function App() {
             <div className="card search-card">
               <div className="mode-toggle">
                 <button className={`mode-btn ${mode === "doi" ? "active" : ""}`} onClick={() => switchMode("doi")}>DOI</button>
-                <button className={`mode-btn ${mode === "title" ? "active" : ""}`} onClick={() => switchMode("title")}>Judul</button>
-                <button className={`mode-btn ${mode === "batch" ? "active" : ""}`} onClick={() => switchMode("batch")}>Banyak Sekaligus</button>
+                <button className={`mode-btn ${mode === "title" ? "active" : ""}`} onClick={() => switchMode("title")}>Title</button>
+                <button className={`mode-btn ${mode === "batch" ? "active" : ""}`} onClick={() => switchMode("batch")}>Batch</button>
               </div>
 
               {mode !== "batch" ? (
@@ -123,14 +123,14 @@ export default function App() {
                   <input
                     className="input"
                     type="text"
-                    placeholder={mode === "doi" ? "Contoh: 10.1109/JPROC.2014.2371999" : "Contoh: Software-Defined Networking: A Comprehensive Survey"}
+                    placeholder={mode === "doi" ? "Example: 10.1109/JPROC.2014.2371999" : "Example: Software-Defined Networking: A Comprehensive Survey"}
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                   />
                   <button className="search-btn" onClick={handleSearch} disabled={status === "loading" || !input.trim()}>
                     {status === "loading" ? <span className="spinner" /> : <SearchIcon />}
-                    <span>{status === "loading" ? "Mencari..." : "Cari"}</span>
+                    <span>{status === "loading" ? "Searching…" : "Search"}</span>
                   </button>
                 </div>
               ) : (
@@ -138,17 +138,17 @@ export default function App() {
                   <textarea
                     className="batch-textarea"
                     rows={6}
-                    placeholder={"Tempel DOI atau judul, satu per baris. Contoh:\n10.1109/JPROC.2014.2371999\nAttention Is All You Need\n10.1145/3292500.3330919"}
+                    placeholder={"Paste one DOI or title per line. For example:\n10.1109/JPROC.2014.2371999\nAttention Is All You Need\n10.1145/3292500.3330919"}
                     value={batchInput}
                     onChange={e => setBatchInput(e.target.value)}
                   />
                   <div className="batch-toolbar">
                     <span className="batch-count">
-                      {batchLineCount} baris {batchLineCount >= MAX_BATCH_ITEMS && `(maks. ${MAX_BATCH_ITEMS})`}
+                      {batchLineCount} lines {batchLineCount >= MAX_BATCH_ITEMS && `(max. ${MAX_BATCH_ITEMS})`}
                     </span>
                     <button className="search-btn" onClick={handleBatchSearch} disabled={status === "loading" || batchLineCount === 0}>
                       {status === "loading" ? <span className="spinner" /> : <SearchIcon />}
-                      <span>{status === "loading" ? "Mencari..." : "Cari Semua"}</span>
+                      <span>{status === "loading" ? "Searching…" : "Search all"}</span>
                     </button>
                   </div>
                   {batchProgress && (
@@ -158,7 +158,7 @@ export default function App() {
                       </div>
                       <p className="batch-progress-label">
                         {batchProgress.done}/{batchProgress.total}
-                        {batchProgress.current ? ` — mencari: ${batchProgress.current}` : " — selesai"}
+                        {batchProgress.current ? ` · Searching for ${batchProgress.current}` : " · Done"}
                       </p>
                     </div>
                   )}
@@ -181,7 +181,7 @@ export default function App() {
         {tab === "library" && <LibraryPanel />}
 
         <footer className="footer">
-          <p>Data dari <a href="https://crossref.org" target="_blank" rel="noreferrer">CrossRef</a>, <a href="https://datacite.org" target="_blank" rel="noreferrer">DataCite</a> & <a href="https://unpaywall.org" target="_blank" rel="noreferrer">Unpaywall</a></p>
+          <p>Data from <a href="https://crossref.org" target="_blank" rel="noreferrer">CrossRef</a>, <a href="https://datacite.org" target="_blank" rel="noreferrer">DataCite</a> & <a href="https://unpaywall.org" target="_blank" rel="noreferrer">Unpaywall</a></p>
         </footer>
 
       </div>

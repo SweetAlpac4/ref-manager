@@ -10,30 +10,30 @@ async function download(path) {
 
 export async function fetchCatalogStyle(value) {
   const slug = value.trim().replace(/\.csl$/i, "").toLowerCase()
-  if (!validSlug.test(slug)) throw new Error("Masukkan ID gaya CSL, misalnya nature.")
+  if (!validSlug.test(slug)) throw new Error("Enter a CSL style ID, such as nature.")
   const file = `${slug}.csl`
   const xml = await download(file) ?? await download(`dependent/${file}`)
-  if (!xml) throw new Error("Gaya tidak ditemukan di katalog CSL.")
+  if (!xml) throw new Error("Could not find this style in the CSL catalog.")
   return xml
 }
 
 export async function prepareCustomStyle(xml, depth = 0) {
   if (depth > 2 || xml.length > 1024 * 1024 || /<!DOCTYPE/i.test(xml)) {
-    throw new Error("Definisi gaya CSL tidak didukung.")
+    throw new Error("This CSL style definition is unsupported.")
   }
   const root = new DOMParser().parseFromString(xml, "application/xml").documentElement
-  if (root.localName !== "style" || root.namespaceURI !== namespace) throw new Error("File CSL tidak valid.")
+  if (root.localName !== "style" || root.namespaceURI !== namespace) throw new Error("Invalid CSL file.")
   const info = root.getElementsByTagNameNS(namespace, "info")[0]
-  const title = info?.getElementsByTagNameNS(namespace, "title")[0]?.textContent.trim() || "Gaya CSL"
+  const title = info?.getElementsByTagNameNS(namespace, "title")[0]?.textContent.trim() || "CSL style"
   const parent = [...(info?.getElementsByTagNameNS(namespace, "link") ?? [])]
     .find(link => link.getAttribute("rel") === "independent-parent")
   if (!parent) {
-    if (!root.getElementsByTagNameNS(namespace, "citation").length) throw new Error("CSL harus mendefinisikan sitasi.")
+    if (!root.getElementsByTagNameNS(namespace, "citation").length) throw new Error("The CSL file must define a citation.")
     return { label: title, xml }
   }
   const href = parent.getAttribute("href") || ""
   const match = href.match(/^https?:\/\/(?:www\.)?zotero\.org\/styles\/([a-z0-9][a-z0-9._-]{0,160})$/i)
-  if (!match) throw new Error("Induk gaya CSL ini harus diimpor sebagai file terpisah.")
+  if (!match) throw new Error("Import the parent CSL style as a separate file.")
   const resolved = await prepareCustomStyle(await fetchCatalogStyle(match[1]), depth + 1)
   const locale = root.getAttribute("default-locale")
   if (!locale) return { ...resolved, label: title }

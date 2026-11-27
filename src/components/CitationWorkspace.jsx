@@ -88,9 +88,9 @@ export default function CitationWorkspace({ references, onBack }) {
       registerCitationStyle(id, custom.xml)
       setStyles(items => [...items, { id, label: custom.label }])
       setStyle(id)
-      setMessage("Gaya CSL ditambahkan untuk sesi ini.")
+      setMessage("CSL style added for this session.")
     } catch (error) {
-      setMessage(error.message || "Gagal mengimpor gaya CSL.")
+      setMessage(error.message || "Could not import the CSL style.")
     } finally {
       setImporting(false)
     }
@@ -101,93 +101,93 @@ export default function CitationWorkspace({ references, onBack }) {
       await copyCitation(text, html)
       setMessage(notice)
     } catch {
-      setMessage("Gagal menyalin. Pilih teks hasil untuk menyalin secara manual.")
+      setMessage("Could not copy. Select the result to copy it manually.")
     }
   }
 
   return <section className="card citation-workspace">
-    <button className="back-btn" onClick={onBack}>Kembali ke Library</button>
-    <h2>Ruang sitasi</h2>
+    <button className="back-btn" onClick={onBack}>Back to library</button>
+    <h2>Citation workspace</h2>
     <div className="library-filters">
-      <label>Gaya sitasi <select value={style} onChange={event => setStyle(event.target.value)}>
+      <label>Citation style <select value={style} onChange={event => setStyle(event.target.value)}>
         {styles.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
       </select></label>
-      <button className="link-pill" onClick={() => setShowStyles(value => !value)}>Tambah gaya CSL</button>
+      <button className="link-pill" onClick={() => setShowStyles(value => !value)}>Add a CSL style</button>
     </div>
     {showStyles && <div className="note-item">
-      <p><a href="https://www.zotero.org/styles" target="_blank" rel="noreferrer">Buka katalog gaya CSL</a></p>
+      <p><a href="https://www.zotero.org/styles" target="_blank" rel="noreferrer">Browse the CSL style catalog</a></p>
       <form className="library-filters" onSubmit={event => {
         event.preventDefault()
         const slug = new FormData(event.currentTarget).get("slug")
         importStyle(() => fetchCatalogStyle(slug))
       }}>
-        <input name="slug" aria-label="ID gaya CSL" placeholder="ID gaya, misalnya nature" required />
-        <button className="link-pill" disabled={importing}>Ambil gaya</button>
+        <input name="slug" aria-label="CSL style ID" placeholder="Style ID, for example nature" required />
+        <button className="link-pill" disabled={importing}>Get style</button>
       </form>
-      <label>Impor file CSL <input type="file" accept=".csl" disabled={importing} onChange={event => {
+      <label>Import CSL file <input type="file" accept=".csl" disabled={importing} onChange={event => {
         const file = event.target.files[0]
         event.target.value = ""
         if (file) importStyle(() => file.text())
       }} /></label>
     </div>}
     {message && <p role="status">{message}</p>}
-    {status === "error" && <p role="alert">Gaya bawaan gagal dimuat. Buka ulang ruang sitasi untuk mencoba lagi.</p>}
-    {missing && <p role="alert">Ada sumber yang sudah dihapus. Ganti sumber atau hapus sitasinya.</p>}
-    {output?.error && <p role="alert">Gaya ini gagal memformat draf. Pilih gaya lain atau periksa file CSL.</p>}
-    {sorted.length === 0 ? <p>Simpan referensi ke Library untuk mulai membuat sitasi.</p> : <form className="library-filters" onSubmit={addGroup}>
-      <select aria-label="Referensi untuk sitasi baru" value={pick || sorted[0].id} onChange={event => setPick(event.target.value)}>
+    {status === "error" && <p role="alert">Could not load the built-in styles. Reopen the citation workspace to try again.</p>}
+    {missing && <p role="alert">A source was deleted. Replace the source or remove its citation.</p>}
+    {output?.error && <p role="alert">Could not format this draft. Choose another style or check the CSL file.</p>}
+    {sorted.length === 0 ? <p>Save a reference to your library to start building citations.</p> : <form className="library-filters" onSubmit={addGroup}>
+      <select aria-label="Reference for new citation" value={pick || sorted[0].id} onChange={event => setPick(event.target.value)}>
         {sorted.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
       </select>
-      <button className="link-pill">Tambah sitasi</button>
+      <button className="link-pill">Add citation</button>
     </form>}
     {groups.map((group, index) => {
       const result = output?.citations?.find(item => item.id === group.id)
       const markup = output?.htmlCitations?.get(group.id)
-      const label = output?.noteStyle ? "Catatan kaki" : "Sitasi"
+      const label = output?.noteStyle ? "Footnote" : "Citation"
       const nextReference = sorted.find(item => !group.items.some(source => source.id === item.id))
       return <article className="note-item" key={group.id}>
         <h3>{label} {index + 1}</h3>
         {group.items.map((item, itemIndex) => <div className="reference-fields" key={itemIndex}>
-          <label>Sumber {itemIndex + 1}<select value={item.id} onChange={event => updateItem(group.id, itemIndex, { id: event.target.value })}>
-            {!referencesById.has(item.id) && <option value={item.id}>Referensi dihapus</option>}
+          <label>Source {itemIndex + 1}<select value={item.id} onChange={event => updateItem(group.id, itemIndex, { id: event.target.value })}>
+            {!referencesById.has(item.id) && <option value={item.id}>Reference deleted</option>}
             {sorted.filter(ref => ref.id === item.id || !group.items.some(source => source.id === ref.id))
               .map(ref => <option key={ref.id} value={ref.id}>{ref.title}</option>)}
           </select></label>
           <div className="citation-item-fields">
-            <label>Jenis penunjuk<select value={item.label || "page"} onChange={event => updateItem(group.id, itemIndex, { label: event.target.value })}>
-              <option value="page">Halaman</option>
-              <option value="chapter">Bab</option>
-              <option value="section">Bagian</option>
-              <option value="paragraph">Paragraf</option>
+            <label>Locator type<select value={item.label || "page"} onChange={event => updateItem(group.id, itemIndex, { label: event.target.value })}>
+              <option value="page">Page</option>
+              <option value="chapter">Chapter</option>
+              <option value="section">Section</option>
+              <option value="paragraph">Paragraph</option>
             </select></label>
-            <label>Nomor penunjuk<input value={item.locator || ""} onChange={event => updateItem(group.id, itemIndex, { locator: event.target.value })} /></label>
-            <label>Teks sebelum<input value={item.prefix || ""} onChange={event => updateItem(group.id, itemIndex, { prefix: event.target.value })} /></label>
-            <label>Teks sesudah<input value={item.suffix || ""} onChange={event => updateItem(group.id, itemIndex, { suffix: event.target.value })} /></label>
+            <label>Locator<input value={item.locator || ""} onChange={event => updateItem(group.id, itemIndex, { locator: event.target.value })} /></label>
+            <label>Prefix<input value={item.prefix || ""} onChange={event => updateItem(group.id, itemIndex, { prefix: event.target.value })} /></label>
+            <label>Suffix<input value={item.suffix || ""} onChange={event => updateItem(group.id, itemIndex, { suffix: event.target.value })} /></label>
           </div>
           <label className="checkbox-label"><input type="checkbox" checked={Boolean(item.suppressAuthor)}
-            onChange={event => updateItem(group.id, itemIndex, { suppressAuthor: event.target.checked })} /> Sembunyikan nama penulis</label>
+            onChange={event => updateItem(group.id, itemIndex, { suppressAuthor: event.target.checked })} /> Suppress author name</label>
           {group.items.length > 1 && <button className="link-pill" onClick={() => updateGroup(group.id, current => ({
             ...current, items: current.items.filter((_, position) => position !== itemIndex),
-          }))}>Hapus sumber</button>}
+          }))}>Remove source</button>}
         </div>)}
         {result && <p className="citation-text" dangerouslySetInnerHTML={{ __html: markup }} />}
         <div className="link-row">
           <button className="link-pill" disabled={!nextReference} onClick={() => updateGroup(group.id, current => ({
             ...current, items: [...current.items, { id: nextReference.id }],
-          }))}>Tambah sumber</button>
-          <button className="link-pill" disabled={index === 0} onClick={() => moveGroup(index, -1)}>Geser ke atas</button>
-          <button className="link-pill" disabled={index === groups.length - 1} onClick={() => moveGroup(index, 1)}>Geser ke bawah</button>
-          <button className="link-pill" disabled={!result} onClick={() => copy(result.value, markup, `${label} disalin.`)}>Salin {label.toLowerCase()}</button>
-          <button className="link-pill link-pill-danger" onClick={() => setGroups(values => values.filter(item => item.id !== group.id))}>Hapus sitasi</button>
+          }))}>Add source</button>
+          <button className="link-pill" disabled={index === 0} onClick={() => moveGroup(index, -1)}>Move up</button>
+          <button className="link-pill" disabled={index === groups.length - 1} onClick={() => moveGroup(index, 1)}>Move down</button>
+          <button className="link-pill" disabled={!result} onClick={() => copy(result.value, markup, `${label} copied.`)}>Copy {label.toLowerCase()}</button>
+          <button className="link-pill link-pill-danger" onClick={() => setGroups(values => values.filter(item => item.id !== group.id))}>Remove citation</button>
         </div>
       </article>
     })}
     {output && !output.error && <section className="note-item">
-      <h3>Daftar pustaka</h3>
+      <h3>Bibliography</h3>
       {output.bibliography ? <>
         <div className="citation-text bibliography-output" dangerouslySetInnerHTML={{ __html: output.htmlBibliography }} />
-        <button className="link-pill" onClick={() => copy(output.bibliography, output.htmlBibliography, "Daftar pustaka disalin.")}>Salin daftar pustaka</button>
-      </> : <p>Gaya ini hanya menghasilkan sitasi.</p>}
+        <button className="link-pill" onClick={() => copy(output.bibliography, output.htmlBibliography, "Bibliography copied.")}>Copy bibliography</button>
+      </> : <p>This style produces citations only.</p>}
     </section>}
   </section>
 }

@@ -16,7 +16,7 @@ export default function NotesPanel({ referenceId, onBack }) {
       if (!active) return
       setNotes(next)
       setReferences(library)
-    }).catch(() => { if (active) setMessage("Gagal memuat catatan.") })
+    }).catch(() => { if (active) setMessage("Could not load notes.") })
     return () => { active = false }
   }, [referenceId])
 
@@ -31,7 +31,7 @@ export default function NotesPanel({ referenceId, onBack }) {
       })
       setNotes(await getNotes(referenceId))
       setEditing(null)
-      setMessage("Catatan disimpan.")
+      setMessage("Note saved.")
     } catch (error) {
       setMessage(error.message)
     } finally {
@@ -40,13 +40,13 @@ export default function NotesPanel({ referenceId, onBack }) {
   }
 
   const remove = async note => {
-    if (!window.confirm(`Hapus catatan “${note.title}”?`)) return
+    if (!window.confirm(`Delete “${note.title}”?`)) return
     try {
       await deleteNote(note.id)
       setNotes(await getNotes(referenceId))
-      setMessage("Catatan dihapus.")
+      setMessage("Note deleted.")
     } catch {
-      setMessage("Gagal menghapus catatan.")
+      setMessage("Could not delete the note.")
     }
   }
 
@@ -55,30 +55,30 @@ export default function NotesPanel({ referenceId, onBack }) {
     ...note.referenceIds.map(id => titles.get(id))].join(" ")).includes(normalizeText(query)))
 
   return <section className={onBack ? "card" : "notes-panel"}>
-    {onBack && <button className="back-btn" onClick={onBack}>Kembali ke Library</button>}
-    <h2>{referenceId ? "Catatan referensi" : "Catatan riset"}</h2>
+    {onBack && <button className="back-btn" onClick={onBack}>Back to library</button>}
+    <h2>{referenceId ? "Reference notes" : "Research notes"}</h2>
     {!editing && notes && <div className="library-filters">
-      <input type="search" aria-label="Cari catatan" placeholder="Cari catatan" value={query} onChange={event => setQuery(event.target.value)} />
-      <button className="link-pill" onClick={() => setEditing({ referenceIds: referenceId ? [referenceId] : [] })}>Tambah catatan</button>
+      <input type="search" aria-label="Search notes" placeholder="Search notes" value={query} onChange={event => setQuery(event.target.value)} />
+      <button className="link-pill" onClick={() => setEditing({ referenceIds: referenceId ? [referenceId] : [] })}>Add note</button>
     </div>}
     {editing && <form className="reference-fields" onSubmit={save}>
-      <label>Jenis<select name="kind" defaultValue={editing.kind}>
+      <label>Type<select name="kind" defaultValue={editing.kind}>
         {NOTE_KINDS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
       </select></label>
-      <label>Judul<input name="title" required defaultValue={editing.title} /></label>
-      <label>Isi<textarea name="body" rows={5} required defaultValue={editing.body} /></label>
-      <label>Referensi terkait
+      <label>Title<input name="title" required defaultValue={editing.title} /></label>
+      <label>Content<textarea name="body" rows={5} required defaultValue={editing.body} /></label>
+      <label>Related references
         <select name="references" multiple defaultValue={editing.referenceIds}>
           {references.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>
       </label>
       <div className="link-row">
-        <button className="link-pill" disabled={busy}>Simpan catatan</button>
-        <button className="link-pill" type="button" onClick={() => setEditing(null)}>Batal</button>
+        <button className="link-pill" disabled={busy}>Save note</button>
+        <button className="link-pill" type="button" onClick={() => setEditing(null)}>Cancel</button>
       </div>
     </form>}
     {message && <p role="status">{message}</p>}
-    {!editing && visibleNotes?.length === 0 && <p>Belum ada catatan yang cocok.</p>}
+    {!editing && visibleNotes?.length === 0 && <p>No matching notes.</p>}
     {!editing && visibleNotes?.map(note => <article className="note-item" key={note.id}>
       <h3>{note.title}</h3>
       <p>{NOTE_KINDS.find(([value]) => value === note.kind)?.[1]}
@@ -86,8 +86,8 @@ export default function NotesPanel({ referenceId, onBack }) {
       </p>
       <p className="note-body">{note.body}</p>
       <div className="link-row">
-        <button className="link-pill" onClick={() => setEditing(note)}>Edit catatan</button>
-        <button className="link-pill link-pill-danger" onClick={() => remove(note)}>Hapus catatan</button>
+        <button className="link-pill" onClick={() => setEditing(note)}>Edit note</button>
+        <button className="link-pill link-pill-danger" onClick={() => remove(note)}>Delete note</button>
       </div>
     </article>)}
   </section>

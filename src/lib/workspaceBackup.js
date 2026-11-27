@@ -3,7 +3,7 @@ import { getWorkspace, NOTE_KINDS, restoreWorkspace } from "./storage.js"
 const format = "ref-manager-workspace"
 const isId = value => typeof value === "string" && value.length > 0 && value.length <= 128
 const isText = value => typeof value === "string"
-const invalid = () => new Error("Data backup tidak valid atau tidak lengkap.")
+const invalid = () => new Error("The backup is invalid or incomplete.")
 
 const toBase64 = file => new Promise((resolve, reject) => {
   const reader = new FileReader()

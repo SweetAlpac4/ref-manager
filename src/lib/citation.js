@@ -13,7 +13,7 @@ const bundledStyles = {
 
 const loadStyle = async url => {
   const response = await fetch(url)
-  if (!response.ok) throw new Error("Gagal memuat gaya sitasi.")
+  if (!response.ok) throw new Error("Could not load citation styles.")
   return response.text()
 }
 
@@ -81,7 +81,7 @@ export const toCSLInput = meta => {
 }
 
 export const formatCitation = (meta, style = "ieee", format = "text") => {
-  if (!plugins.config.get("@csl").templates.has(style)) throw new Error("Gaya sitasi belum tersedia.")
+  if (!plugins.config.get("@csl").templates.has(style)) throw new Error("This citation style is unavailable.")
   return new Cite(toCSLInput(meta)).format("bibliography", { format, template: style }).trim()
 }
 
@@ -100,7 +100,7 @@ export const WORKSPACE_STYLES = [
 export function formatCitationWorkspace(references, groups, style, format = "text") {
   const { templates, locales } = plugins.config.get("@csl")
   const template = templates.get(style)
-  if (!template) throw new Error("Gaya sitasi belum tersedia.")
+  if (!template) throw new Error("This citation style is unavailable.")
   const noteStyle = /<style\b[^>]*\bclass=["']note["']/.test(template)
   const items = new Map(util.downgradeCsl(references.map(toCSLInput)).map(item => [item.id, item]))
   const citeproc = new CSL.Engine({

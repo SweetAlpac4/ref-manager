@@ -31,9 +31,9 @@ export const getAttachments = referenceId =>
 
 export const attachPdf = async (referenceId, file) => {
   const header = await file.slice(0, 1024).text()
-  if (!header.includes("%PDF-")) throw new Error("Pilih berkas PDF yang valid.")
+  if (!header.includes("%PDF-")) throw new Error("Choose a valid PDF file.")
   return db.transaction("rw", db.references, db.attachments, async () => {
-    if (!await db.references.get(referenceId)) throw new Error("Referensi tidak ditemukan.")
+    if (!await db.references.get(referenceId)) throw new Error("Reference not found.")
     return db.attachments.add({
       id: crypto.randomUUID(), referenceId, name: file.name,
       file: file.slice(0, file.size, "application/pdf"),
@@ -46,18 +46,18 @@ export const deleteAttachment = id => db.attachments.delete(id)
 export const editPdfAnnotations = async (attachmentId, edit) =>
   db.transaction("rw", db.attachments, async () => {
     const attachment = await db.attachments.get(attachmentId)
-    if (!attachment) throw new Error("Lampiran tidak ditemukan.")
+    if (!attachment) throw new Error("Attachment not found.")
     const annotations = edit(attachment.annotations ?? [])
     await db.attachments.update(attachmentId, { annotations })
     return annotations
   })
 
 export const READING_STATUSES = [
-  ["unread", "Belum dibaca"], ["reading", "Sedang dibaca"], ["read", "Selesai dibaca"],
+  ["unread", "Unread"], ["reading", "Reading"], ["read", "Read"],
 ]
 
 export const NOTE_KINDS = [
-  ["note", "Catatan"], ["insight", "Insight riset"], ["excerpt", "Kutipan"],
+  ["note", "Note"], ["insight", "Research insight"], ["excerpt", "Excerpt"],
 ]
 
 export const getNotes = async referenceId => {
@@ -68,11 +68,11 @@ export const getNotes = async referenceId => {
 
 export const saveNote = async ({ id, title, body, kind, referenceIds }) =>
   db.transaction("rw", db.notes, db.references, async () => {
-    if (!title.trim() || !body.trim()) throw new Error("Isi judul dan catatan.")
-    if (id && !await db.notes.get(id)) throw new Error("Catatan tidak ditemukan.")
+    if (!title.trim() || !body.trim()) throw new Error("Enter a title and note.")
+    if (id && !await db.notes.get(id)) throw new Error("Note not found.")
     const ids = [...new Set(referenceIds)]
     const references = await db.references.bulkGet(ids)
-    if (references.some(reference => !reference)) throw new Error("Tautan referensi sudah berubah. Muat ulang catatan.")
+    if (references.some(reference => !reference)) throw new Error("The linked references have changed. Reload the note.")
     await db.notes.put({
       id: id ?? crypto.randomUUID(), title: title.trim(), body: body.trim(),
       kind: NOTE_KINDS.some(([value]) => value === kind) ? kind : "note",
@@ -167,9 +167,9 @@ export const saveToLibrary = async (metadata) => {
 
 export const updateReference = async (id, changes) => db.transaction("rw", db.references, async () => {
   const current = await db.references.get(id)
-  if (!current) throw new Error("Referensi tidak ditemukan.")
+  if (!current) throw new Error("Reference not found.")
   const updated = sanitizeEntry({ ...current, ...changes, id })
-  if (!isValidEntry(updated)) throw new Error("Judul wajib diisi.")
+  if (!isValidEntry(updated)) throw new Error("Title is required.")
   await db.references.update(id, updated)
   return { ...current, ...updated }
 })
@@ -236,7 +236,7 @@ export const restoreWorkspace = ({ references, notes, attachments }) =>
     const added = { references: 0, notes: 0, attachments: 0 }
 
     for (const item of references) {
-      if (!isValidEntry(item)) throw new Error("Backup berisi referensi yang tidak valid.")
+      if (!isValidEntry(item)) throw new Error("The backup contains an invalid reference.")
       const entry = sanitizeEntry(item)
       const match = localById.get(item.id) ?? local.find(existing => duplicateScore(existing, entry) >= 2)
       referenceIds.set(item.id, match?.id ?? item.id)
@@ -404,10 +404,10 @@ export const importLibraryFromJson = async (jsonText) => {
   try {
     parsed = JSON.parse(jsonText)
   } catch {
-    return { ok: false, error: "File bukan JSON yang valid." }
+    return { ok: false, error: "The file is not valid JSON." }
   }
   if (!Array.isArray(parsed)) {
-    return { ok: false, error: "Format JSON tidak sesuai (harus berupa array referensi)." }
+    return { ok: false, error: "The JSON file must contain an array of references." }
   }
 
   try {
@@ -426,6 +426,6 @@ export const importLibraryFromJson = async (jsonText) => {
       return { ok: true, added: toAdd.length, skipped, duplicates }
     })
   } catch {
-    return { ok: false, error: "Gagal menulis ke penyimpanan lokal." }
+    return { ok: false, error: "Could not write to local storage." }
   }
 }

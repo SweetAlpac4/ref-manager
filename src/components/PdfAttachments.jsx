@@ -17,10 +17,10 @@ export default function PdfAttachments({ referenceId, target, onNoteCreated, onM
       if (target) {
         const attachment = items.find(item => item.id === target.id)
         if (attachment) setOpened({ attachment, page: target.page })
-        else setMessage("Lampiran tidak ditemukan.")
+        else setMessage("Attachment not found.")
       }
     })
-      .catch(() => { if (active) setMessage("Gagal memuat lampiran.") })
+      .catch(() => { if (active) setMessage("Could not load attachments.") })
     return () => { active = false }
   }, [referenceId, target])
 
@@ -32,22 +32,22 @@ export default function PdfAttachments({ referenceId, target, onNoteCreated, onM
     try {
       await attachPdf(referenceId, file)
       setAttachments(await getAttachments(referenceId))
-      setMessage("PDF dilampirkan.")
+      setMessage("PDF attached.")
     } catch (error) {
-      setMessage(error.name === "QuotaExceededError" ? "Penyimpanan browser penuh." : error.message)
+      setMessage(error.name === "QuotaExceededError" ? "Browser storage is full." : error.message)
     } finally {
       setBusy(false)
     }
   }
 
   const remove = async item => {
-    if (!window.confirm(`Hapus lampiran “${item.name}”?`)) return
+    if (!window.confirm(`Delete “${item.name}”?`)) return
     try {
       await deleteAttachment(item.id)
       setAttachments(await getAttachments(referenceId))
-      setMessage("Lampiran dihapus.")
+      setMessage("Attachment deleted.")
     } catch {
-      setMessage("Gagal menghapus lampiran.")
+      setMessage("Could not delete the attachment.")
     }
   }
 
@@ -61,20 +61,20 @@ export default function PdfAttachments({ referenceId, target, onNoteCreated, onM
   }
 
   return <section className="notes-panel">
-    <h2>Lampiran PDF</h2>
+    <h2>PDF attachments</h2>
     <label>
-      Tambah PDF
+      Attach PDF
       <input type="file" accept=".pdf,application/pdf" disabled={busy} onChange={add} />
     </label>
     {attachments.map(item => <article key={item.id} className="note-item">
       <p>{item.name}</p>
       <div className="link-row">
-        <button className="link-pill" onClick={() => setOpened({ attachment: item, page: 1 })}>Baca PDF</button>
-        <button className="link-pill" onClick={() => download(item)}>Unduh</button>
-        <button className="link-pill link-pill-danger" onClick={() => remove(item)}>Hapus lampiran</button>
+        <button className="link-pill" onClick={() => setOpened({ attachment: item, page: 1 })}>Read PDF</button>
+        <button className="link-pill" onClick={() => download(item)}>Download</button>
+        <button className="link-pill link-pill-danger" onClick={() => remove(item)}>Delete attachment</button>
       </div>
     </article>)}
-    {opened && <Suspense fallback={<p>Memuat pembaca PDF…</p>}>
+    {opened && <Suspense fallback={<p>Loading PDF reader…</p>}>
       <PdfReader key={opened.attachment.id} attachment={opened.attachment} initialPage={opened.page} onClose={() => setOpened(null)}
         onNoteCreated={onNoteCreated} onMetadata={onMetadata}
         onAnnotations={annotations => setAttachments(items => items.map(item => item.id === opened.attachment.id ? { ...item, annotations } : item))} />

@@ -1,16 +1,16 @@
 import { useState } from "react"
 
 const fields = [
-  ["title", "Judul"], ["journal", "Jurnal atau wadah publikasi"], ["publisher", "Penerbit atau institusi"],
-  ["year", "Tahun"], ["volume", "Volume"], ["issue", "Nomor"],
-  ["pages", "Halaman"], ["doi", "DOI"], ["isbn", "ISBN"],
+  ["title", "Title"], ["journal", "Journal or publication"], ["publisher", "Publisher or institution"],
+  ["year", "Year"], ["volume", "Volume"], ["issue", "Issue"],
+  ["pages", "Pages"], ["doi", "DOI"], ["isbn", "ISBN"],
 ]
 
 const types = [
-  ["journal-article", "Artikel jurnal"], ["book", "Buku"], ["book-chapter", "Bab buku"],
-  ["proceedings-article", "Makalah prosiding"], ["report", "Laporan"],
-  ["dissertation", "Tesis atau disertasi"], ["posted-content", "Pracetak"],
-  ["dataset", "Dataset"], ["software", "Perangkat lunak"], ["other", "Lainnya"],
+  ["journal-article", "Journal article"], ["book", "Book"], ["book-chapter", "Book chapter"],
+  ["proceedings-article", "Conference paper"], ["report", "Report"],
+  ["dissertation", "Thesis or dissertation"], ["posted-content", "Preprint"],
+  ["dataset", "Dataset"], ["software", "Software"], ["other", "Other"],
 ]
 
 export default function MetadataEditor({ metadata = {}, onSave, onCancel }) {
@@ -26,7 +26,7 @@ export default function MetadataEditor({ metadata = {}, onSave, onCancel }) {
     const form = new FormData(event.currentTarget)
     const changes = Object.fromEntries(fields.map(([key]) => [key, form.get(key).trim() || null]))
     if (!changes.title) {
-      setMessage("Judul wajib diisi.")
+      setMessage("Title is required.")
       return
     }
     changes.abstract = form.get("abstract").trim() || null
@@ -53,7 +53,7 @@ export default function MetadataEditor({ metadata = {}, onSave, onCancel }) {
   }
 
   return <form className="reference-fields" onSubmit={submit}>
-    <label>Tipe referensi
+    <label>Reference type
       <select name="type" defaultValue={type}>
         {!types.some(([id]) => id === type) && <option value={type}>{type}</option>}
         {types.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
@@ -63,13 +63,13 @@ export default function MetadataEditor({ metadata = {}, onSave, onCancel }) {
       <input name={key} required={key === "title"} defaultValue={metadata[key] ?? ""}
         pattern={key === "year" ? "[0-9]{1,4}" : undefined} />
     </label>)}
-    <label>Penulis, satu per baris dalam format Nama keluarga, Nama depan
+    <label>Authors, one per line in Last name, First name format
       <textarea name="authors" rows={4} defaultValue={initialAuthors} />
     </label>
-    <label>Abstrak<textarea name="abstract" rows={5} defaultValue={metadata.abstract ?? ""} /></label>
+    <label>Abstract<textarea name="abstract" rows={5} defaultValue={metadata.abstract ?? ""} /></label>
     <div className="link-row">
-      <button className="link-pill" disabled={busy}>Simpan metadata</button>
-      <button className="link-pill" type="button" onClick={onCancel}>Batal</button>
+      <button className="link-pill" disabled={busy}>Save metadata</button>
+      <button className="link-pill" type="button" onClick={onCancel}>Cancel</button>
     </div>
     {message && <p role="alert">{message}</p>}
   </form>

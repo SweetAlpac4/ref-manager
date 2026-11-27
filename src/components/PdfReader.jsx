@@ -42,7 +42,7 @@ export default function PdfReader({ attachment, initialPage = 1, onClose, onAnno
       }
     }).catch(error => {
       if (!active) return
-      setFailure(error.name === "PasswordException" ? "PDF ini dilindungi sandi." : "PDF gagal dibuka.")
+      setFailure(error.name === "PasswordException" ? "This PDF is password-protected." : "Could not open the PDF.")
     })
     return () => {
       active = false
@@ -72,7 +72,7 @@ export default function PdfReader({ attachment, initialPage = 1, onClose, onAnno
   const startHighlight = () => {
     const selection = getSelection()
     if (!selection?.quote) {
-      setMessage("Pilih teks pada halaman PDF terlebih dahulu.")
+      setMessage("Select text on the PDF page first.")
       return
     }
     setMessage("")
@@ -93,28 +93,28 @@ export default function PdfReader({ attachment, initialPage = 1, onClose, onAnno
     try {
       await changeAnnotations(items => [...items.filter(item => item.id !== annotation.id), annotation])
       setDraft(null)
-      setMessage("Anotasi disimpan.")
+      setMessage("Annotation saved.")
     } catch (error) { setMessage(error.message) }
   }
 
   const removeAnnotation = async id => {
-    if (!window.confirm("Hapus anotasi ini?")) return
+    if (!window.confirm("Delete this annotation?")) return
     try {
       await changeAnnotations(items => items.filter(item => item.id !== id))
-      setMessage("Anotasi dihapus.")
+      setMessage("Annotation deleted.")
     } catch (error) { setMessage(error.message) }
   }
 
   const extractNote = async annotation => {
     try {
       await saveNote({
-        title: `${attachment.name} · hlm. ${annotation.page}`,
+        title: `${attachment.name} · p. ${annotation.page}`,
         body: [annotation.quote, annotation.comment].filter(Boolean).join("\n\n"),
         kind: annotation.quote ? "excerpt" : "note",
         referenceIds: [attachment.referenceId],
       })
       onNoteCreated()
-      setMessage("Anotasi disalin ke catatan referensi.")
+      setMessage("Annotation copied to the reference notes.")
     } catch (error) { setMessage(error.message) }
   }
 
@@ -144,45 +144,45 @@ export default function PdfReader({ attachment, initialPage = 1, onClose, onAnno
     try {
       const { info, metadata } = await pdf.getMetadata()
       const fields = [
-        ["title", "Judul", info.Title || metadata?.get("dc:title")],
-        ["author", "Penulis", info.Author || metadata?.get("dc:creator")],
+        ["title", "Title", info.Title || metadata?.get("dc:title")],
+        ["author", "Author", info.Author || metadata?.get("dc:creator")],
         ["doi", "DOI", metadata?.get("prism:doi")],
       ].flatMap(([key, label, value]) => {
         const text = (Array.isArray(value) ? value.join("; ") : String(value ?? "")).trim()
         return text ? [{ key, label, text }] : []
       })
       setSuggestions(fields)
-    } catch { setMessage("Gagal membaca metadata PDF.") }
+    } catch { setMessage("Could not read PDF metadata.") }
   }
 
   const currentAnnotations = annotations.filter(item => item.page === page)
   return <dialog className="pdf-reader" ref={dialog} onCancel={event => { event.preventDefault(); onClose() }}>
     <div className="pdf-toolbar">
       <strong>{attachment.name}</strong>
-      <button type="button" className="link-pill" onClick={onClose}>Tutup PDF</button>
+      <button type="button" className="link-pill" onClick={onClose}>Close PDF</button>
     </div>
     {failure && <p role="alert">{failure}</p>}
-    {!failure && !pdf && <p>Memuat PDF…</p>}
+    {!failure && !pdf && <p>Loading PDF…</p>}
     {pdf && <>
       <div className="pdf-toolbar">
-        <button className="link-pill" disabled={page === 1} onClick={() => setPage(page - 1)}>Sebelumnya</button>
-        <span>Halaman {page} dari {pdf.numPages}</span>
-        <button className="link-pill" disabled={page === pdf.numPages} onClick={() => setPage(page + 1)}>Berikutnya</button>
+        <button className="link-pill" disabled={page === 1} onClick={() => setPage(page - 1)}>Previous</button>
+        <span>Page {page} of {pdf.numPages}</span>
+        <button className="link-pill" disabled={page === pdf.numPages} onClick={() => setPage(page + 1)}>Next</button>
         <label>Zoom <select value={scale} onChange={event => setScale(Number(event.target.value))}>
           {[.5, .75, 1, 1.25, 1.5, 2].map(value => <option key={value} value={value}>{value * 100}%</option>)}
         </select></label>
-        <button className="link-pill" onClick={retrieveMetadata}>Baca metadata PDF</button>
+        <button className="link-pill" onClick={retrieveMetadata}>Read PDF metadata</button>
       </div>
       <form className="library-filters" onSubmit={find}>
-        <input type="search" aria-label="Cari teks PDF" placeholder="Cari teks PDF" value={query} onChange={event => setQuery(event.target.value)} required />
-        <button className="link-pill">Cari</button>
+        <input type="search" aria-label="Search PDF text" placeholder="Search PDF text" value={query} onChange={event => setQuery(event.target.value)} required />
+        <button className="link-pill">Search</button>
       </form>
-      {search?.pending && <p role="status">Mencari di semua halaman…</p>}
-      {search?.failed && <p role="alert">Pencarian PDF gagal.</p>}
+      {search?.pending && <p role="status">Searching all pages…</p>}
+      {search?.failed && <p role="alert">Could not search the PDF.</p>}
       {search && !search.pending && !search.failed && <div className="pdf-search-results">
-        <p>{search.matches.length} halaman cocok.</p>
+        <p>Matching pages: {search.matches.length}.</p>
         {search.matches.map(({ number, snippet }) => <button key={number} className="link-pill" onClick={() => setPage(number)}>
-          Halaman {number} · {snippet}
+          Page {number} · {snippet}
         </button>)}
       </div>}
       {suggestions && <form className="reference-fields" onSubmit={async event => {
@@ -192,47 +192,47 @@ export default function PdfReader({ attachment, initialPage = 1, onClose, onAnno
         try {
           await onMetadata(values)
           setSuggestions(null)
-          setMessage("Metadata referensi diperbarui.")
+          setMessage("Reference metadata updated.")
         } catch (error) { setMessage(error.message) }
       }}>
-        {suggestions.length === 0 && <p>PDF tidak memiliki metadata judul, penulis, atau DOI yang terbaca.</p>}
+        {suggestions.length === 0 && <p>The PDF has no readable title, author, or DOI metadata.</p>}
         {suggestions.map(({ key, label, text }) => <label key={key} className="checkbox-label">
           <input type="checkbox" name={key} value={text} />{label} · {text}
         </label>)}
-        {suggestions.length > 0 && <button className="link-pill">Terapkan pilihan</button>}
-        <button type="button" className="link-pill" onClick={() => setSuggestions(null)}>Tutup metadata</button>
+        {suggestions.length > 0 && <button className="link-pill">Apply selected fields</button>}
+        <button type="button" className="link-pill" onClick={() => setSuggestions(null)}>Close metadata</button>
       </form>}
       <div className="pdf-toolbar">
-        <button className="link-pill" disabled={Boolean(draft)} onPointerDown={event => event.preventDefault()} onClick={startHighlight}>Highlight teks terpilih</button>
-        <button className="link-pill" disabled={Boolean(draft)} onClick={() => setDraft({ page, quote: "", rects: [], comment: "" })}>Tambah sticky note</button>
+        <button className="link-pill" disabled={Boolean(draft)} onPointerDown={event => event.preventDefault()} onClick={startHighlight}>Highlight selected text</button>
+        <button className="link-pill" disabled={Boolean(draft)} onClick={() => setDraft({ page, quote: "", rects: [], comment: "" })}>Add sticky note</button>
       </div>
       {message && <p role="status">{message}</p>}
       {draft && <form className="reference-fields" onSubmit={saveAnnotation}>
-        <p>Halaman {draft.page}{draft.quote && ` · “${draft.quote}”`}</p>
-        <label>Komentar<textarea name="comment" rows={3} defaultValue={draft.comment} required={!draft.quote} /></label>
+        <p>Page {draft.page}{draft.quote && ` · “${draft.quote}”`}</p>
+        <label>Comment<textarea name="comment" rows={3} defaultValue={draft.comment} required={!draft.quote} /></label>
         <div className="link-row">
-          <button className="link-pill">Simpan anotasi</button>
-          <button className="link-pill" type="button" onClick={() => setDraft(null)}>Batal</button>
+          <button className="link-pill">Save annotation</button>
+          <button className="link-pill" type="button" onClick={() => setDraft(null)}>Cancel</button>
         </div>
       </form>}
       <div className="pdf-page-scroll">
         <PdfPage key={`${page}-${scale}`} pdf={pdf} page={page} scale={scale} pageRef={pageRef} annotations={currentAnnotations} />
       </div>
       <section>
-        <h2>Anotasi halaman {page}</h2>
-        {currentAnnotations.length === 0 && <p>Belum ada anotasi di halaman ini.</p>}
+        <h2>Annotations on page {page}</h2>
+        {currentAnnotations.length === 0 && <p>No annotations on this page yet.</p>}
         {currentAnnotations.map(item => <article key={item.id} className="note-item">
           {item.quote && <p>“{item.quote}”</p>}
           {item.comment && <p className="note-body">{item.comment}</p>}
           <div className="link-row">
-            <button className="link-pill" disabled={Boolean(draft)} onClick={() => setDraft(item)}>Edit komentar</button>
-            <button className="link-pill" onClick={() => extractNote(item)}>Salin ke catatan</button>
-            <button className="link-pill link-pill-danger" disabled={Boolean(draft)} onClick={() => removeAnnotation(item.id)}>Hapus anotasi</button>
+            <button className="link-pill" disabled={Boolean(draft)} onClick={() => setDraft(item)}>Edit comment</button>
+            <button className="link-pill" onClick={() => extractNote(item)}>Copy to notes</button>
+            <button className="link-pill link-pill-danger" disabled={Boolean(draft)} onClick={() => removeAnnotation(item.id)}>Delete annotation</button>
           </div>
         </article>)}
       </section>
       {annotations.some(item => item.page !== page) && <div className="pdf-toolbar">
-        <span>Halaman lain dengan anotasi</span>
+        <span>Other pages with annotations</span>
         {[...new Set(annotations.map(item => item.page))].sort((a, b) => a - b).filter(number => number !== page).map(number =>
           <button className="link-pill" key={number} onClick={() => setPage(number)}>{number}</button>)}
       </div>}
@@ -273,8 +273,8 @@ function PdfPage({ pdf, page, scale, pageRef, annotations }) {
   }, [pdf, page, scale])
 
   return <>
-    {failure && <p role="alert">Halaman PDF gagal dirender.</p>}
-    <div className="pdf-page" ref={pageRef} aria-label={`Halaman PDF ${page}`}>
+    {failure && <p role="alert">Could not render the PDF page.</p>}
+    <div className="pdf-page" ref={pageRef} aria-label={`Page PDF ${page}`}>
       <canvas ref={canvas} />
       <div className="pdf-highlights" aria-hidden="true">
         {annotations.flatMap(annotation => annotation.rects.map((rect, index) =>

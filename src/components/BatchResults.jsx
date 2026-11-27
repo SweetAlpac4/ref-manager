@@ -12,7 +12,7 @@ export default function BatchResults({ results, onSavedChange }) {
   useEffect(() => {
     let active = true
     getSavedMatches(candidates).then(matches => { if (active) setSavedItems(matches) })
-      .catch(() => { if (active) setMessage("Gagal memeriksa referensi tersimpan.") })
+      .catch(() => { if (active) setMessage("Could not check saved references.") })
     return () => { active = false }
   }, [candidates])
 
@@ -21,7 +21,7 @@ export default function BatchResults({ results, onSavedChange }) {
       setSavedItems(await getSavedMatches(candidates))
       onSavedChange?.()
     } catch {
-      setMessage("Gagal memeriksa referensi tersimpan.")
+      setMessage("Could not check saved references.")
     }
   }
 
@@ -32,7 +32,7 @@ export default function BatchResults({ results, onSavedChange }) {
     if (result.ok || result.reason === "duplicate") {
       await markSaved()
     } else {
-      setMessage("Gagal menyimpan referensi.")
+      setMessage("Could not save the reference.")
     }
   }
 
@@ -48,7 +48,7 @@ export default function BatchResults({ results, onSavedChange }) {
         }
       }
       await markSaved()
-      if (failed) setMessage(`${failed} referensi gagal disimpan.`)
+      if (failed) setMessage(`References that could not be saved: ${failed}.`)
     } finally {
       setSaving(false)
     }
@@ -70,9 +70,9 @@ export default function BatchResults({ results, onSavedChange }) {
   return (
     <div className="batch-results">
       <div className="batch-summary">
-        <p>{successCount} dari {results.length} ditemukan</p>
+        <p>Found {successCount} of {results.length}</p>
         {successCount > 0 && (
-          <button className="search-btn batch-save-all" onClick={handleSaveAll} disabled={saving}>Simpan Semua ke Library</button>
+          <button className="search-btn batch-save-all" onClick={handleSaveAll} disabled={saving}>Save all to library</button>
         )}
       </div>
       {message && <p role="status">{message}</p>}
@@ -91,10 +91,10 @@ export default function BatchResults({ results, onSavedChange }) {
                   <p className="batch-item-title">{r.data.title}</p>
                 )}
                 {r.status === "not_found" && (
-                  <p className="batch-item-note">Tidak ditemukan</p>
+                  <p className="batch-item-note">Not found</p>
                 )}
                 {r.status === "error" && (
-                  <p className="batch-item-note">Gagal mengambil data</p>
+                  <p className="batch-item-note">Could not retrieve data</p>
                 )}
               </div>
               {r.status === "success" && (
@@ -103,7 +103,7 @@ export default function BatchResults({ results, onSavedChange }) {
                   disabled={isSaved || saving}
                   onClick={(e) => handleSave(r.data, e)}
                 >
-                  {isSaved ? "Tersimpan" : "Simpan"}
+                  {isSaved ? "Saved" : "Save"}
                 </button>
               )}
             </li>

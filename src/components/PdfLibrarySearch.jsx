@@ -59,30 +59,30 @@ export default function PdfLibrarySearch({ references, onBack, onOpen }) {
   const byId = new Map(references.map(item => [item.id, item]))
 
   return <section className="card citation-workspace">
-    <button className="back-btn" onClick={onBack}>Kembali ke Library</button>
-    <h2>Cari di semua PDF</h2>
+    <button className="back-btn" onClick={onBack}>Back to library</button>
+    <h2>Search all PDFs</h2>
     <form className="library-filters" onSubmit={search}>
-      <input name="query" type="search" aria-label="Cari isi semua PDF" placeholder="Masukkan kata atau frasa" required />
-      <button className="link-pill">Cari dalam PDF</button>
+      <input name="query" type="search" aria-label="Search all PDF text" placeholder="Enter a word or phrase" required />
+      <button className="link-pill">Search PDFs</button>
       {result?.pending && <button type="button" className="link-pill" onClick={() => {
         activeSearch.current.controller?.abort()
         setResult(null)
-      }}>Batalkan pencarian</button>}
+      }}>Cancel search</button>}
     </form>
-    {result?.pending && <p role="status">Memindai PDF ({result.scanned}/{result.total})…</p>}
-    {result?.error && <p role="alert">Gagal memuat lampiran PDF.</p>}
+    {result?.pending && <p role="status">Scanning PDFs ({result.scanned}/{result.total})…</p>}
+    {result?.error && <p role="alert">Could not load PDF attachments.</p>}
     {result && !result.pending && !result.error && <>
-      <p role="status">{result.total ? `${result.matches.length} halaman cocok dari ${result.total} PDF.` : "Belum ada lampiran PDF."}</p>
-      {result.unreadable > 0 && <p>{result.unreadable} PDF gagal dibaca.</p>}
-      {result.withoutText > 0 && <p>{result.withoutText} PDF tidak memiliki lapisan teks.</p>}
+      <p role="status">{result.total ? `Matching pages: ${result.matches.length}. PDFs searched: ${result.total}.` : "No PDF attachments yet."}</p>
+      {result.unreadable > 0 && <p>Unreadable PDFs: {result.unreadable}.</p>}
+      {result.withoutText > 0 && <p>PDFs without a text layer: {result.withoutText}.</p>}
       {result.matches.map(({ attachment, page, snippet }) => {
         const reference = byId.get(attachment.referenceId)
         if (!reference) return null
         return <article key={`${attachment.id}-${page}`} className="note-item">
           <h3>{reference.title}</h3>
-          <p>{attachment.name} · hlm. {page}</p>
+          <p>{attachment.name} · p. {page}</p>
           <p>{snippet}</p>
-          <button className="link-pill" onClick={() => onOpen(reference, { id: attachment.id, page })}>Buka halaman</button>
+          <button className="link-pill" onClick={() => onOpen(reference, { id: attachment.id, page })}>Open page</button>
         </article>
       })}
     </>}

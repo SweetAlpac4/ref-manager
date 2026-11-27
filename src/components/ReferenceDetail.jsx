@@ -86,7 +86,7 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
       setSaved(true)
       onSaveChange?.()
     } else {
-      setSaveMessage("Gagal menyimpan referensi.")
+      setSaveMessage("Could not save the reference.")
     }
   }
 
@@ -103,7 +103,7 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
     <div className="detail-view">
       {onBack && (
         <button className="back-btn" onClick={onBack}>
-          <ArrowLeftIcon /><span>Kembali</span>
+          <ArrowLeftIcon /><span>Back</span>
         </button>
       )}
 
@@ -125,20 +125,20 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
           <div className="link-row">
             {metadata.doi && (
               <a className="link-pill" href={`https://doi.org/${metadata.doi}`} target="_blank" rel="noreferrer">
-                Lihat Sumber
+                View source
               </a>
             )}
             {metadata.pdfUrl && (
               <a className="link-pill link-pill-pdf" href={metadata.pdfUrl} target="_blank" rel="noreferrer">
-                Unduh PDF
+                Download PDF
               </a>
             )}
             <button className="link-pill link-pill-save" onClick={handleSave} disabled={saved}>
-              {saved ? "Tersimpan di Library" : "Simpan ke Library"}
+              {saved ? "Saved to library" : "Save to library"}
             </button>
             {onDelete && (
               <button className="link-pill link-pill-danger" onClick={onDelete}>
-                Hapus dari Library
+                Delete from library
               </button>
             )}
           </div>
@@ -174,13 +174,13 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
 
         <div className="card col-right">
           <div className="metadata-grid">
-            <MetaRow label="Judul" value={metadata.title} />
-            <MetaRow label="Penulis" value={metadata.authors?.join(", ")} />
-            <MetaRow label="Jurnal" value={metadata.journal} />
-            <MetaRow label="Tahun" value={metadata.year} />
+            <MetaRow label="Title" value={metadata.title} />
+            <MetaRow label="Authors" value={metadata.authors?.join(", ")} />
+            <MetaRow label="Journal" value={metadata.journal} />
+            <MetaRow label="Year" value={metadata.year} />
             <MetaRow label="Volume" value={metadata.volume} />
             <MetaRow label="Issue" value={metadata.issue} />
-            <MetaRow label="Halaman" value={metadata.pages} />
+            <MetaRow label="Pages" value={metadata.pages} />
             <MetaRow label="DOI" value={metadata.doi} />
             {metadata.isbn && <MetaRow label="ISBN" value={metadata.isbn} />}
           </div>
@@ -188,7 +188,7 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
           <div className="divider" />
 
           <div className="format-section">
-            <p className="section-label">Format Sitasi</p>
+            <p className="section-label">Citation format</p>
             <div className="style-pills">
               {STYLES.map(s => (
                 <button key={s.id} className={`style-pill ${selectedStyle === s.id ? "active" : ""}`} onClick={() => setSelectedStyle(s.id)}>
@@ -203,15 +203,15 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
               <span className="citation-label">{STYLES.find(s => s.id === selectedStyle)?.label}</span>
               <button className="copy-btn" onClick={handleCopy} disabled={!citation}>
                 {copied ? <CheckIcon /> : <CopyIcon />}
-                <span>{copied ? "Tersalin!" : "Salin"}</span>
+                <span>{copied ? "Copied!" : "Copy"}</span>
               </button>
             </div>
             {citation ? <div className="citation-text" dangerouslySetInnerHTML={{ __html: citation.html }} />
-              : <p className="citation-text">{stylesError ? "Gagal memuat gaya sitasi."
-                : stylesReady ? "Gagal memformat sitasi." : "Memuat gaya sitasi…"}</p>}
-            {copyError && <p role="alert">Gagal menyalin sitasi.</p>}
+              : <p className="citation-text">{stylesError ? "Could not load citation styles."
+                : stylesReady ? "Could not format the citation." : "Loading citation styles…"}</p>}
+            {copyError && <p role="alert">Could not copy the citation.</p>}
             {stylesError && (
-              <button className="link-pill" onClick={handleRetryStyles}>Coba Lagi</button>
+              <button className="link-pill" onClick={handleRetryStyles}>Try again</button>
             )}
           </div>
         </div>
@@ -243,17 +243,17 @@ function ReferenceOrganization({ metadata, onSave }) {
         tags: fields.get("tags").split(","),
         readingStatus: fields.get("readingStatus"),
       })
-      setMessage("Pengaturan referensi disimpan.")
+      setMessage("Reference settings saved.")
     } catch (error) {
       setMessage(error.message)
     }
   }}>
-    <label>Koleksi, pisahkan dengan koma<input name="collections" defaultValue={metadata.collections?.join(", ")} /></label>
-    <label>Tag, pisahkan dengan koma<input name="tags" defaultValue={metadata.tags?.join(", ")} /></label>
-    <label>Status baca<select name="readingStatus" defaultValue={metadata.readingStatus ?? "unread"}>
+    <label>Collections, separated by commas<input name="collections" defaultValue={metadata.collections?.join(", ")} /></label>
+    <label>Tags, separated by commas<input name="tags" defaultValue={metadata.tags?.join(", ")} /></label>
+    <label>Reading status<select name="readingStatus" defaultValue={metadata.readingStatus ?? "unread"}>
       {READING_STATUSES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
     </select></label>
-    <button className="link-pill">Simpan pengaturan</button>
+    <button className="link-pill">Save settings</button>
     <p role="status">{message}</p>
   </form>
 }
