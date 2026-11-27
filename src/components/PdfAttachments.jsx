@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react"
+import { lazy, Suspense, useEffect, useState } from "react"
 import { attachPdf, deleteAttachment, getAttachments } from "../lib/storage"
 
-export default function PdfAttachments({ referenceId }) {
+const PdfReader = lazy(() => import("./PdfReader"))
+
+export default function PdfAttachments({ referenceId, onNoteCreated, onMetadata }) {
+  const [opened, setOpened] = useState(null)
   const [attachments, setAttachments] = useState([])
   const [message, setMessage] = useState("")
   const [busy, setBusy] = useState(false)
@@ -58,10 +61,16 @@ export default function PdfAttachments({ referenceId }) {
     {attachments.map(item => <article key={item.id} className="note-item">
       <p>{item.name}</p>
       <div className="link-row">
+        <button className="link-pill" onClick={() => setOpened(item)}>Baca PDF</button>
         <button className="link-pill" onClick={() => download(item)}>Unduh</button>
         <button className="link-pill link-pill-danger" onClick={() => remove(item)}>Hapus lampiran</button>
       </div>
     </article>)}
+    {opened && <Suspense fallback={<p>Memuat pembaca PDF…</p>}>
+      <PdfReader key={opened.id} attachment={opened} onClose={() => setOpened(null)}
+        onNoteCreated={onNoteCreated} onMetadata={onMetadata}
+        onAnnotations={annotations => setAttachments(items => items.map(item => item.id === opened.id ? { ...item, annotations } : item))} />
+    </Suspense>}
     {message && <p role="status">{message}</p>}
   </section>
 }

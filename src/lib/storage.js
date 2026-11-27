@@ -41,6 +41,15 @@ export const attachPdf = async (referenceId, file) => {
 
 export const deleteAttachment = id => db.attachments.delete(id)
 
+export const editPdfAnnotations = async (attachmentId, edit) =>
+  db.transaction("rw", db.attachments, async () => {
+    const attachment = await db.attachments.get(attachmentId)
+    if (!attachment) throw new Error("Lampiran tidak ditemukan.")
+    const annotations = edit(attachment.annotations ?? [])
+    await db.attachments.update(attachmentId, { annotations })
+    return annotations
+  })
+
 export const READING_STATUSES = [
   ["unread", "Belum dibaca"], ["reading", "Sedang dibaca"], ["read", "Selesai dibaca"],
 ]

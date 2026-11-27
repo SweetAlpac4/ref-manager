@@ -13,6 +13,7 @@ import { CopyIcon, CheckIcon, BookIcon, ArrowLeftIcon } from "./icons"
 // item yang baru, bukan nyangkut ke data item sebelumnya.
 export default function ReferenceDetail({ metadata: initialMetadata, onBack, onSaveChange, onDelete, onUpdate }) {
   const [metadata, setMetadata] = useState(initialMetadata)
+  const [notesVersion, setNotesVersion] = useState(0)
   const [editing, setEditing] = useState(false)
   const [saveMessage, setSaveMessage] = useState("")
   const [thumbnail, setThumbnail] = useState(null)
@@ -136,8 +137,18 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
               setEditing(false)
             }} />}
             <ReferenceOrganization metadata={metadata} onSave={saveChanges} />
-            <PdfAttachments referenceId={metadata.id} />
-            <NotesPanel referenceId={metadata.id} />
+            <PdfAttachments referenceId={metadata.id} onNoteCreated={() => setNotesVersion(version => version + 1)}
+              onMetadata={async ({ title, author, doi }) => {
+                const changes = {}
+                if (title) changes.title = title
+                if (doi) Object.assign(changes, { doi, pdfUrl: null })
+                if (author) {
+                  const authors = author.split(";").map(name => name.trim()).filter(Boolean)
+                  Object.assign(changes, { authors, citationAuthors: authors, authorsStructured: authors.map(literal => ({ literal })), contributorRole: "author" })
+                }
+                await saveChanges(changes)
+              }} />
+            <NotesPanel key={notesVersion} referenceId={metadata.id} />
           </>}
 
           {metadata.abstract && (

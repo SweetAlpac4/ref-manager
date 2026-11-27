@@ -1,0 +1,104 @@
+.pdf-reader {
+  box-sizing: border-box;
+  width: min(96vw, 1000px);
+  max-height: 92dvh;
+  background: var(--bg);
+  color: var(--text-h);
+  border: 1px solid var(--border);
+  border-radius: .65rem;
+}
+
+.pdf-reader::backdrop {
+  background: rgb(0 0 0 / 55%);
+}
+
+.pdf-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+  margin-block: .5rem;
+}
+
+.pdf-toolbar strong {
+  overflow-wrap: anywhere;
+  margin-inline-end: auto;
+}
+
+.pdf-page-scroll {
+  overflow: auto;
+  max-height: 64dvh;
+  margin-block: .75rem;
+  border: 1px solid var(--border);
+}
+
+.pdf-page {
+  position: relative;
+  width: max-content;
+  margin-inline: auto;
+  background: #fff;
+}
+
+.pdf-page canvas {
+  display: block;
+}
+
+.pdf-highlights, .pdf-page .textLayer {
+  position: absolute;
+  inset: 0;
+}
+
+.pdf-highlights {
+  pointer-events: none;
+}
+
+.pdf-highlights span {
+  position: absolute;
+  background: rgb(255 213 0 / 40%);
+}
+
+.pdf-page .textLayer {
+  overflow: clip;
+  line-height: 1;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-size-adjust: none;
+  transform-origin: 0 0;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+}
+
+.pdf-page .textLayer :is(span, br) {
+  position: absolute;
+  color: transparent;
+  white-space: pre;
+  user-select: text;
+  transform-origin: 0 0;
+  cursor: text;
+}
+
+.pdf-page .textLayer > :not(.markedContent),
+.pdf-page .textLayer .markedContent span:not(.markedContent) {
+  font-size: calc(var(--text-scale-factor) * var(--font-height, 0));
+  transform: rotate(var(--rotate, 0deg)) scaleX(var(--scale-x, 1)) scale(calc(1 / var(--min-font-size)));
+}
+
+.pdf-page .textLayer .markedContent {
+  display: contents;
+}
+
+.pdf-page .textLayer ::selection {
+  background: rgb(30 120 255 / 40%);
+}
+
+.pdf-search-results {
+  max-height: 12rem;
+  overflow: auto;
+  display: grid;
+  justify-items: start;
+  gap: .25rem;
+}
+
+.pdf-search-results button {
+  text-align: start;
+}
