@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useMemo } from "react"
+import { lazy, Suspense, useRef, useState, useEffect, useMemo } from "react"
 import {
   READING_STATUSES, mergeReferences, getLibrary, saveToLibrary, removeFromLibrary, removeManyFromLibrary, exportLibraryAsBibtex,
   exportLibraryAsRis, exportLibraryAsJson, importLibraryFromJson,
@@ -9,6 +9,8 @@ import CitationWorkspace from "./CitationWorkspace"
 import NotesPanel from "./NotesPanel"
 import MetadataEditor from "./MetadataEditor"
 import ReferenceDetail from "./ReferenceDetail"
+
+const PdfLibrarySearch = lazy(() => import("./PdfLibrarySearch"))
 
 const downloadFile = (filename, content, mime = "text/plain") => {
   const blob = new Blob([content], { type: mime })
@@ -35,6 +37,8 @@ export default function LibraryPanel() {
   const [openItem, setOpenItem] = useState(null)
   const [importMsg, setImportMsg] = useState("")
   const [showDuplicates, setShowDuplicates] = useState(false)
+  const [showPdfSearch, setShowPdfSearch] = useState(false)
+  const [pdfTarget, setPdfTarget] = useState(null)
   const [showCitations, setShowCitations] = useState(false)
   const [showNotes, setShowNotes] = useState(false)
   const [readingStatus, setReadingStatus] = useState("")
@@ -159,6 +163,11 @@ export default function LibraryPanel() {
   const exportIds = selectedIds.size > 0 ? [...selectedIds] : null
   const exportCountLabel = selectedIds.size > 0 ? `${selectedIds.size} terpilih` : "semua"
 
+  if (showPdfSearch && !openItem) return <Suspense fallback={<p>Memuat pencarian PDF…</p>}>
+    <PdfLibrarySearch references={items} onBack={() => setShowPdfSearch(false)}
+      onOpen={(item, target) => { setPdfTarget(target); setOpenItem(item) }} />
+  </Suspense>
+
   if (showCitations) return <CitationWorkspace references={items} onBack={() => setShowCitations(false)} />
 
   if (showNotes) return <NotesPanel onBack={() => setShowNotes(false)} />
@@ -181,12 +190,14 @@ export default function LibraryPanel() {
       <ReferenceDetail
         key={openItem.id}
         metadata={openItem}
-        onBack={() => setOpenItem(null)}
+        pdfTarget={pdfTarget}
+        onBack={() => { setPdfTarget(null); setOpenItem(null) }}
         onUpdate={async () => { await refresh() }}
         onDelete={async () => {
           await removeFromLibrary(openItem.id)
           setSelectedIds(prev => { const next = new Set(prev); next.delete(openItem.id); return next })
           await refresh()
+          setPdfTarget(null)
           setOpenItem(null)
         }}
       />
@@ -234,6 +245,7 @@ export default function LibraryPanel() {
           <button className="link-pill" onClick={async () => downloadFile("library.bib", await exportLibraryAsBibtex(exportIds))}>Ekspor .bib</button>
           <button className="link-pill" onClick={async () => downloadFile("library.ris", await exportLibraryAsRis(exportIds))}>Ekspor .ris</button>
           <button className="link-pill" onClick={async () => downloadFile("library.json", await exportLibraryAsJson(exportIds), "application/json")}>Ekspor .json</button>
+          <button className="link-pill" disabled={!items.length} onClick={() => setShowPdfSearch(true)}>Cari isi PDF</button>
           <button className="link-pill" onClick={() => setShowCitations(true)}>Ruang sitasi</button>
           <button className="link-pill" onClick={() => setShowNotes(true)}>Catatan riset</button>
           <button className="link-pill" onClick={() => setAdding(true)}>Tambah referensi</button>

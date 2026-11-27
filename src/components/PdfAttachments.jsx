@@ -3,7 +3,7 @@ import { attachPdf, deleteAttachment, getAttachments } from "../lib/storage"
 
 const PdfReader = lazy(() => import("./PdfReader"))
 
-export default function PdfAttachments({ referenceId, onNoteCreated, onMetadata }) {
+export default function PdfAttachments({ referenceId, target, onNoteCreated, onMetadata }) {
   const [opened, setOpened] = useState(null)
   const [attachments, setAttachments] = useState([])
   const [message, setMessage] = useState("")
@@ -11,10 +11,18 @@ export default function PdfAttachments({ referenceId, onNoteCreated, onMetadata 
 
   useEffect(() => {
     let active = true
-    getAttachments(referenceId).then(items => { if (active) setAttachments(items) })
+    getAttachments(referenceId).then(items => {
+      if (!active) return
+      setAttachments(items)
+      if (target) {
+        const attachment = items.find(item => item.id === target.id)
+        if (attachment) setOpened({ attachment, page: target.page })
+        else setMessage("Lampiran tidak ditemukan.")
+      }
+    })
       .catch(() => { if (active) setMessage("Gagal memuat lampiran.") })
     return () => { active = false }
-  }, [referenceId])
+  }, [referenceId, target])
 
   const add = async event => {
     const file = event.target.files[0]
@@ -61,15 +69,15 @@ export default function PdfAttachments({ referenceId, onNoteCreated, onMetadata 
     {attachments.map(item => <article key={item.id} className="note-item">
       <p>{item.name}</p>
       <div className="link-row">
-        <button className="link-pill" onClick={() => setOpened(item)}>Baca PDF</button>
+        <button className="link-pill" onClick={() => setOpened({ attachment: item, page: 1 })}>Baca PDF</button>
         <button className="link-pill" onClick={() => download(item)}>Unduh</button>
         <button className="link-pill link-pill-danger" onClick={() => remove(item)}>Hapus lampiran</button>
       </div>
     </article>)}
     {opened && <Suspense fallback={<p>Memuat pembaca PDF…</p>}>
-      <PdfReader key={opened.id} attachment={opened} onClose={() => setOpened(null)}
+      <PdfReader key={opened.attachment.id} attachment={opened.attachment} initialPage={opened.page} onClose={() => setOpened(null)}
         onNoteCreated={onNoteCreated} onMetadata={onMetadata}
-        onAnnotations={annotations => setAttachments(items => items.map(item => item.id === opened.id ? { ...item, annotations } : item))} />
+        onAnnotations={annotations => setAttachments(items => items.map(item => item.id === opened.attachment.id ? { ...item, annotations } : item))} />
     </Suspense>}
     {message && <p role="status">{message}</p>}
   </section>

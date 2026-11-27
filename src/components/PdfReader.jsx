@@ -1,19 +1,17 @@
 import { useEffect, useRef, useState } from "react"
-import { getDocument, GlobalWorkerOptions, TextLayer } from "pdfjs-dist"
-import workerUrl from "pdfjs-dist/build/pdf.worker.mjs?url"
+import { TextLayer } from "pdfjs-dist"
+import { getPageText, openPdf, findTextInPage } from "../lib/pdfDocument"
 import { editPdfAnnotations, saveNote } from "../lib/storage"
 import { normalizeText } from "../lib/duplicates"
 import "./PdfReader.css"
 
-GlobalWorkerOptions.workerSrc = workerUrl
-
-export default function PdfReader({ attachment, onClose, onAnnotations, onNoteCreated, onMetadata }) {
+export default function PdfReader({ attachment, initialPage = 1, onClose, onAnnotations, onNoteCreated, onMetadata }) {
   const dialog = useRef(null)
   const pageRef = useRef(null)
   const textCache = useRef(new Map())
   const searchId = useRef({ value: 0 })
   const [pdf, setPdf] = useState(null)
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useState(initialPage)
   const [scale, setScale] = useState(1)
   const [annotations, setAnnotations] = useState(attachment.annotations ?? [])
   const [draft, setDraft] = useState(null)
@@ -35,10 +33,13 @@ export default function PdfReader({ attachment, onClose, onAnnotations, onNoteCr
     const searches = searchId.current
     attachment.file.arrayBuffer().then(data => {
       if (!active) return
-      task = getDocument({ data, isEvalSupported: false })
+      task = openPdf(data)
       return task.promise
     }).then(document => {
-      if (active && document) setPdf(document)
+      if (active && document) {
+        setPdf(document)
+        setPage(current => Math.max(1, Math.min(current, document.numPages)))
+      }
     }).catch(error => {
       if (!active) return
       setFailure(error.name === "PasswordException" ? "PDF ini dilindungi sandi." : "PDF gagal dibuka.")
@@ -128,12 +129,10 @@ export default function PdfReader({ attachment, onClose, onAnnotations, onNoteCr
       for (let number = 1; number <= pdf.numPages; number++) {
         if (request !== searchId.current.value) return
         if (!textCache.current.has(number)) {
-          const content = await (await pdf.getPage(number)).getTextContent()
-          textCache.current.set(number, content.items.map(item => item.str ?? "").join(" "))
+          textCache.current.set(number, await getPageText(pdf, number))
         }
-        const text = normalizeText(textCache.current.get(number))
-        const index = text.indexOf(term)
-        if (index >= 0) matches.push({ number, snippet: text.slice(Math.max(0, index - 35), index + term.length + 45) })
+        const snippet = findTextInPage(textCache.current.get(number), term)
+        if (snippet) matches.push({ number, snippet })
       }
       if (request === searchId.current.value) setSearch({ matches })
     } catch {

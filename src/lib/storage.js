@@ -24,6 +24,8 @@ db.version(3).stores({
   attachments: "id, referenceId",
 })
 
+export const getAllAttachments = () => db.attachments.toArray()
+
 export const getAttachments = referenceId =>
   db.attachments.where("referenceId").equals(referenceId).toArray()
 
