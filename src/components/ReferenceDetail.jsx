@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react"
 import { lookupOpenAccessPdf, fetchThumbnail } from "../lib/crossref"
 import { initCitationStyles, formatCitation, STYLES } from "../lib/citation"
 import { saveToLibrary, isInLibrary, updateReference, READING_STATUSES } from "../lib/storage"
+import PdfAttachments from "./PdfAttachments"
 import NotesPanel from "./NotesPanel"
 import MetadataEditor from "./MetadataEditor"
 import { CopyIcon, CheckIcon, BookIcon, ArrowLeftIcon } from "./icons"
@@ -135,6 +136,7 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
               setEditing(false)
             }} />}
             <ReferenceOrganization metadata={metadata} onSave={saveChanges} />
+            <PdfAttachments referenceId={metadata.id} />
             <NotesPanel referenceId={metadata.id} />
           </>}
 

@@ -18,6 +18,29 @@ db.version(2).stores({
   notes: "id, *referenceIds, updatedAt",
 })
 
+db.version(3).stores({
+  references: "id, doi, savedAt",
+  notes: "id, *referenceIds, updatedAt",
+  attachments: "id, referenceId",
+})
+
+export const getAttachments = referenceId =>
+  db.attachments.where("referenceId").equals(referenceId).toArray()
+
+export const attachPdf = async (referenceId, file) => {
+  const header = await file.slice(0, 1024).text()
+  if (!header.includes("%PDF-")) throw new Error("Pilih berkas PDF yang valid.")
+  return db.transaction("rw", db.references, db.attachments, async () => {
+    if (!await db.references.get(referenceId)) throw new Error("Referensi tidak ditemukan.")
+    return db.attachments.add({
+      id: crypto.randomUUID(), referenceId, name: file.name,
+      file: file.slice(0, file.size, "application/pdf"),
+    })
+  })
+}
+
+export const deleteAttachment = id => db.attachments.delete(id)
+
 export const READING_STATUSES = [
   ["unread", "Belum dibaca"], ["reading", "Sedang dibaca"], ["read", "Selesai dibaca"],
 ]
@@ -132,7 +155,7 @@ export const updateReference = async (id, changes) => db.transaction("rw", db.re
 
 export const mergeReferences = async (keepId, otherId) => {
   if (keepId === otherId) return false
-  return db.transaction("rw", db.references, db.notes, async () => {
+  return db.transaction("rw", db.references, db.notes, db.attachments, async () => {
     const [keep, other] = await db.references.bulkGet([keepId, otherId])
     if (!keep || !other) return false
     for (const key of ["journal", "year", "volume", "issue", "pages", "doi", "isbn", "abstract"]) {
@@ -151,6 +174,7 @@ export const mergeReferences = async (keepId, otherId) => {
     await db.notes.where("referenceIds").equals(otherId).modify(note => {
       note.referenceIds = [...new Set(note.referenceIds.map(id => id === otherId ? keepId : id))]
     })
+    await db.attachments.where("referenceId").equals(otherId).modify({ referenceId: keepId })
     await db.references.put(keep)
     await db.references.delete(otherId)
     return true
@@ -159,11 +183,12 @@ export const mergeReferences = async (keepId, otherId) => {
 
 const deleteReferences = async ids => {
   try {
-    await db.transaction("rw", db.references, db.notes, async () => {
+    await db.transaction("rw", db.references, db.notes, db.attachments, async () => {
       const removed = new Set(ids ?? await db.references.toCollection().primaryKeys())
       await db.notes.where("referenceIds").anyOf([...removed]).distinct().modify(note => {
         note.referenceIds = note.referenceIds.filter(id => !removed.has(id))
       })
+      await db.attachments.where("referenceId").anyOf([...removed]).delete()
       await db.references.bulkDelete([...removed])
     })
     return true
