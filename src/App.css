@@ -586,3 +586,31 @@ body {
   background: rgba(224, 138, 138, 0.1);
   border-color: #e08a8a;
 }
+
+.library-filters, .reference-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin-block: 1rem;
+}
+
+.reference-fields {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.reference-fields label {
+  display: grid;
+  gap: .25rem;
+  width: 100%;
+}
+
+.library-filters input, .library-filters select,
+.reference-fields input, .reference-fields select, .reference-fields textarea {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: .4rem;
+  padding: .4rem .6rem;
+}

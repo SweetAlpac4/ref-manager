@@ -3,7 +3,7 @@ import {
   mergeReferences, getLibrary, removeFromLibrary, removeManyFromLibrary, exportLibraryAsBibtex,
   exportLibraryAsRis, exportLibraryAsJson, importLibraryFromJson,
 } from "../lib/storage"
-import { duplicateScore } from "../lib/duplicates"
+import { duplicateScore, normalizeText } from "../lib/duplicates"
 import ReferenceDetail from "./ReferenceDetail"
 
 const downloadFile = (filename, content, mime = "text/plain") => {
@@ -31,6 +31,9 @@ export default function LibraryPanel() {
   const [openItem, setOpenItem] = useState(null)
   const [importMsg, setImportMsg] = useState("")
   const [showDuplicates, setShowDuplicates] = useState(false)
+  const [query, setQuery] = useState("")
+  const [collection, setCollection] = useState("")
+  const [tag, setTag] = useState("")
   const fileInputRef = useRef(null)
 
   const refresh = async () => {
@@ -48,16 +51,26 @@ export default function LibraryPanel() {
     return () => { cancelled = true }
   }, [])
 
+  const collections = [...new Set(items.flatMap(item => item.collections ?? []))].sort()
+  const tags = [...new Set(items.flatMap(item => item.tags ?? []))].sort()
+  const visible = useMemo(() => items.filter(item => {
+    const terms = normalizeText(query).split(" ")
+    const text = normalizeText([item.title, ...item.authors, item.journal, item.year, item.doi,
+      item.isbn, item.abstract, ...(item.collections ?? []), ...(item.tags ?? [])].join(" "))
+    return (!collection || item.collections?.includes(collection))
+      && (!tag || item.tags?.includes(tag)) && terms.every(term => text.includes(term))
+  }), [items, query, collection, tag])
+
   // kelompokkan item berdasarkan tanggal disimpan, urutan terbaru dulu
   const groups = useMemo(() => {
     const map = new Map()
-    for (const item of items) {
+    for (const item of visible) {
       const key = dateKey(item.savedAt)
       if (!map.has(key)) map.set(key, [])
       map.get(key).push(item)
     }
     return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]))
-  }, [items])
+  }, [visible])
 
   const duplicatePairs = useMemo(() => showDuplicates
     ? items.flatMap((item, index) => items.slice(index + 1)
@@ -76,7 +89,7 @@ export default function LibraryPanel() {
     }
   }
 
-  const allIds = useMemo(() => items.map(i => i.id), [items])
+  const allIds = useMemo(() => visible.map(i => i.id), [visible])
   const allSelected = allIds.length > 0 && allIds.every(id => selectedIds.has(id))
 
   const toggleOne = (id) => {
@@ -144,6 +157,7 @@ export default function LibraryPanel() {
         key={openItem.id}
         metadata={openItem}
         onBack={() => setOpenItem(null)}
+        onUpdate={async () => { await refresh() }}
         onDelete={async () => {
           await removeFromLibrary(openItem.id)
           setSelectedIds(prev => { const next = new Set(prev); next.delete(openItem.id); return next })
@@ -173,11 +187,23 @@ export default function LibraryPanel() {
 
   return (
     <div className="library-panel">
+      <div className="library-filters">
+        <input type="search" aria-label="Cari library" placeholder="Cari judul, penulis, DOI, atau abstrak" value={query} onChange={event => setQuery(event.target.value)} />
+        <select aria-label="Filter koleksi" value={collection} onChange={event => setCollection(event.target.value)}>
+          <option value="">Semua koleksi</option>
+          {collections.map(value => <option key={value}>{value}</option>)}
+        </select>
+        <select aria-label="Filter tag" value={tag} onChange={event => setTag(event.target.value)}>
+          <option value="">Semua tag</option>
+          {tags.map(value => <option key={value}>{value}</option>)}
+        </select>
+      </div>
+      {visible.length === 0 && <p>Tidak ada referensi yang cocok.</p>}
       <div className="library-toolbar">
         <div className="library-toolbar-left">
           <label className="checkbox-label">
             <input type="checkbox" checked={allSelected} onChange={toggleAll} />
-            <span>Pilih Semua ({items.length})</span>
+            <span>Pilih yang terlihat ({visible.length})</span>
           </label>
           <p className="library-count">Ekspor: {exportCountLabel}</p>
         </div>

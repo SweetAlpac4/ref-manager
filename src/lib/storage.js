@@ -27,6 +27,10 @@ const isValidEntry = (item) => {
   )
 }
 
+const cleanLabels = values => Array.isArray(values)
+  ? [...new Set(values.filter(value => typeof value === "string").map(value => value.trim()).filter(Boolean))]
+  : []
+
 const sanitizeEntry = (item) => ({
   id: item.id,
   title: item.title,
@@ -42,6 +46,8 @@ const sanitizeEntry = (item) => ({
   isbn: item.isbn ?? null,
   type: item.type ?? "article-journal",
   abstract: item.abstract ?? null,
+  collections: cleanLabels(item.collections),
+  tags: cleanLabels(item.tags),
   savedAt: item.savedAt ?? new Date().toISOString(),
 })
 
@@ -77,6 +83,15 @@ export const saveToLibrary = async (metadata) => {
   }
 }
 
+export const updateReference = async (id, changes) => db.transaction("rw", db.references, async () => {
+  const current = await db.references.get(id)
+  if (!current) throw new Error("Referensi tidak ditemukan.")
+  const updated = sanitizeEntry({ ...current, ...changes, id })
+  if (!isValidEntry(updated)) throw new Error("Judul wajib diisi.")
+  await db.references.update(id, updated)
+  return { ...current, ...updated }
+})
+
 export const mergeReferences = async (keepId, otherId) => {
   if (keepId === otherId) return false
   return db.transaction("rw", db.references, async () => {
@@ -90,6 +105,8 @@ export const mergeReferences = async (keepId, otherId) => {
       keep.citationAuthors = other.citationAuthors
       keep.authorsStructured = other.authorsStructured
     }
+    keep.collections = cleanLabels([...(keep.collections ?? []), ...(other.collections ?? [])])
+    keep.tags = cleanLabels([...(keep.tags ?? []), ...(other.tags ?? [])])
     await db.references.put(keep)
     await db.references.delete(otherId)
     return true

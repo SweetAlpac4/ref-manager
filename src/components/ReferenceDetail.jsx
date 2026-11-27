@@ -1,19 +1,19 @@
 import { useState, useEffect, useMemo } from "react"
 import { lookupOpenAccessPdf, fetchThumbnail } from "../lib/crossref"
 import { initCitationStyles, formatCitation, STYLES } from "../lib/citation"
-import { saveToLibrary, isInLibrary } from "../lib/storage"
+import { saveToLibrary, isInLibrary, updateReference } from "../lib/storage"
 import { CopyIcon, CheckIcon, BookIcon, ArrowLeftIcon } from "./icons"
 
 // PENTING: kalau dipakai untuk menampilkan item yang berbeda-beda (mis. dari list
 // batch/library), render komponen ini dengan `key` unik per item (mis. key={doi}),
 // supaya React remount komponen dan effect fetch pdf/thumbnail jalan ulang untuk
 // item yang baru, bukan nyangkut ke data item sebelumnya.
-export default function ReferenceDetail({ metadata: initialMetadata, onBack, onSaveChange, onDelete }) {
+export default function ReferenceDetail({ metadata: initialMetadata, onBack, onSaveChange, onDelete, onUpdate }) {
   const [metadata, setMetadata] = useState(initialMetadata)
   const [thumbnail, setThumbnail] = useState(null)
   const [selectedStyle, setSelectedStyle] = useState("ieee")
   const [copied, setCopied] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [saved, setSaved] = useState(Boolean(onUpdate))
   const [stylesReady, setStylesReady] = useState(false)
   const [stylesError, setStylesError] = useState(false)
 
@@ -24,7 +24,7 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
   }, [])
 
   useEffect(() => {
-    isInLibrary(initialMetadata?.doi).then(setSaved)
+    if (!onUpdate) isInLibrary(initialMetadata?.doi).then(setSaved)
 
     if (initialMetadata?.doi && !initialMetadata.pdfUrl) {
       lookupOpenAccessPdf(initialMetadata.doi).then(url => {
@@ -114,6 +114,12 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
             )}
           </div>
 
+          {onUpdate && <ReferenceOrganization metadata={metadata} onSave={async changes => {
+            const updated = await updateReference(metadata.id, changes)
+            setMetadata(previous => ({ ...previous, ...updated }))
+            await onUpdate()
+          }} />}
+
           {metadata.abstract && (
             <div className="abstract-section">
               <p className="abstract-text">{metadata.abstract}</p>
@@ -175,4 +181,27 @@ function MetaRow({ label, value }) {
       <span className="meta-value">{value}</span>
     </div>
   )
+}
+
+
+function ReferenceOrganization({ metadata, onSave }) {
+  const [message, setMessage] = useState("")
+  return <form className="reference-fields" onSubmit={async event => {
+    event.preventDefault()
+    const fields = new FormData(event.currentTarget)
+    try {
+      await onSave({
+        collections: fields.get("collections").split(","),
+        tags: fields.get("tags").split(","),
+      })
+      setMessage("Koleksi dan tag disimpan.")
+    } catch (error) {
+      setMessage(error.message)
+    }
+  }}>
+    <label>Koleksi, pisahkan dengan koma<input name="collections" defaultValue={metadata.collections?.join(", ")} /></label>
+    <label>Tag, pisahkan dengan koma<input name="tags" defaultValue={metadata.tags?.join(", ")} /></label>
+    <button className="link-pill">Simpan koleksi dan tag</button>
+    <p role="status">{message}</p>
+  </form>
 }
