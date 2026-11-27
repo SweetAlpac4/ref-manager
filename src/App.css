@@ -614,3 +614,22 @@ body {
   border-radius: .4rem;
   padding: .4rem .6rem;
 }
+
+.notes-panel, .note-item {
+  margin-block: 1rem;
+  text-align: start;
+}
+
+.note-item {
+  border-top: 1px solid var(--border);
+  padding-top: .75rem;
+}
+
+.note-item h3 {
+  margin: 0;
+}
+
+.note-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

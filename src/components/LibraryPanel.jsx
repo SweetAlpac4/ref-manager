@@ -1,9 +1,10 @@
 import { useRef, useState, useEffect, useMemo } from "react"
 import {
-  mergeReferences, getLibrary, saveToLibrary, removeFromLibrary, removeManyFromLibrary, exportLibraryAsBibtex,
+  READING_STATUSES, mergeReferences, getLibrary, saveToLibrary, removeFromLibrary, removeManyFromLibrary, exportLibraryAsBibtex,
   exportLibraryAsRis, exportLibraryAsJson, importLibraryFromJson,
 } from "../lib/storage"
 import { duplicateScore, normalizeText } from "../lib/duplicates"
+import NotesPanel from "./NotesPanel"
 import MetadataEditor from "./MetadataEditor"
 import ReferenceDetail from "./ReferenceDetail"
 
@@ -32,6 +33,8 @@ export default function LibraryPanel() {
   const [openItem, setOpenItem] = useState(null)
   const [importMsg, setImportMsg] = useState("")
   const [showDuplicates, setShowDuplicates] = useState(false)
+  const [showNotes, setShowNotes] = useState(false)
+  const [readingStatus, setReadingStatus] = useState("")
   const [adding, setAdding] = useState(false)
   const [query, setQuery] = useState("")
   const [collection, setCollection] = useState("")
@@ -59,9 +62,9 @@ export default function LibraryPanel() {
     const terms = normalizeText(query).split(" ")
     const text = normalizeText([item.title, ...item.authors, item.journal, item.year, item.doi,
       item.isbn, item.abstract, ...(item.collections ?? []), ...(item.tags ?? [])].join(" "))
-    return (!collection || item.collections?.includes(collection))
+    return (!readingStatus || (item.readingStatus ?? "unread") === readingStatus) && (!collection || item.collections?.includes(collection))
       && (!tag || item.tags?.includes(tag)) && terms.every(term => text.includes(term))
-  }), [items, query, collection, tag])
+  }), [items, query, collection, tag, readingStatus])
 
   // kelompokkan item berdasarkan tanggal disimpan, urutan terbaru dulu
   const groups = useMemo(() => {
@@ -153,6 +156,8 @@ export default function LibraryPanel() {
   const exportIds = selectedIds.size > 0 ? [...selectedIds] : null
   const exportCountLabel = selectedIds.size > 0 ? `${selectedIds.size} terpilih` : "semua"
 
+  if (showNotes) return <NotesPanel onBack={() => setShowNotes(false)} />
+
   if (adding) {
     return <div className="card">
       <h2>Tambah referensi</h2>
@@ -192,6 +197,7 @@ export default function LibraryPanel() {
       <div className="card library-empty">
         <p>Belum ada referensi tersimpan. Cari referensi lalu klik &quot;Simpan ke Library&quot;.</p>
         <div className="library-actions">
+          <button className="link-pill" onClick={() => setShowNotes(true)}>Catatan riset</button>
           <button className="link-pill" onClick={() => setAdding(true)}>Tambah referensi</button>
           <button className="link-pill" onClick={handleImportClick}>Impor dari JSON</button>
           <input ref={fileInputRef} type="file" accept="application/json" hidden onChange={handleFileChange} />
@@ -213,6 +219,10 @@ export default function LibraryPanel() {
           <option value="">Semua tag</option>
           {tags.map(value => <option key={value}>{value}</option>)}
         </select>
+        <select aria-label="Filter status baca" value={readingStatus} onChange={event => setReadingStatus(event.target.value)}>
+          <option value="">Semua status baca</option>
+          {READING_STATUSES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
       </div>
       {visible.length === 0 && <p>Tidak ada referensi yang cocok.</p>}
       <div className="library-toolbar">
@@ -232,6 +242,7 @@ export default function LibraryPanel() {
           <button className="link-pill" onClick={async () => downloadFile("library.bib", await exportLibraryAsBibtex(exportIds))}>Ekspor .bib</button>
           <button className="link-pill" onClick={async () => downloadFile("library.ris", await exportLibraryAsRis(exportIds))}>Ekspor .ris</button>
           <button className="link-pill" onClick={async () => downloadFile("library.json", await exportLibraryAsJson(exportIds), "application/json")}>Ekspor .json</button>
+          <button className="link-pill" onClick={() => setShowNotes(true)}>Catatan riset</button>
           <button className="link-pill" onClick={() => setAdding(true)}>Tambah referensi</button>
           <button className="link-pill" onClick={handleImportClick}>Impor .json</button>
           <input ref={fileInputRef} type="file" accept="application/json" hidden onChange={handleFileChange} />

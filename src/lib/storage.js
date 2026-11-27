@@ -13,6 +13,41 @@ db.version(1).stores({
   references: "id, doi, savedAt",
 })
 
+db.version(2).stores({
+  references: "id, doi, savedAt",
+  notes: "id, *referenceIds, updatedAt",
+})
+
+export const READING_STATUSES = [
+  ["unread", "Belum dibaca"], ["reading", "Sedang dibaca"], ["read", "Selesai dibaca"],
+]
+
+export const NOTE_KINDS = [
+  ["note", "Catatan"], ["insight", "Insight riset"], ["excerpt", "Kutipan"],
+]
+
+export const getNotes = async referenceId => {
+  if (!referenceId) return db.notes.orderBy("updatedAt").reverse().toArray()
+  const notes = await db.notes.where("referenceIds").equals(referenceId).toArray()
+  return notes.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+}
+
+export const saveNote = async ({ id, title, body, kind, referenceIds }) =>
+  db.transaction("rw", db.notes, db.references, async () => {
+    if (!title.trim() || !body.trim()) throw new Error("Isi judul dan catatan.")
+    if (id && !await db.notes.get(id)) throw new Error("Catatan tidak ditemukan.")
+    const ids = [...new Set(referenceIds)]
+    const references = await db.references.bulkGet(ids)
+    if (references.some(reference => !reference)) throw new Error("Tautan referensi sudah berubah. Muat ulang catatan.")
+    await db.notes.put({
+      id: id ?? crypto.randomUUID(), title: title.trim(), body: body.trim(),
+      kind: NOTE_KINDS.some(([value]) => value === kind) ? kind : "note",
+      referenceIds: ids, updatedAt: new Date().toISOString(),
+    })
+  })
+
+export const deleteNote = id => db.notes.delete(id)
+
 // --- Validasi & sanitasi skema minimal ---
 // Dipakai saat baca dari DB maupun saat import file, supaya entry yang bentuknya
 // tidak sesuai di-skip (bukan bikin seluruh app crash).
@@ -48,6 +83,7 @@ const sanitizeEntry = (item) => ({
   type: item.type ?? "article-journal",
   abstract: item.abstract ?? null,
   pdfUrl: typeof item.pdfUrl === "string" && /^https?:\/\//i.test(item.pdfUrl) ? item.pdfUrl : null,
+  readingStatus: READING_STATUSES.some(([value]) => value === item.readingStatus) ? item.readingStatus : "unread",
   collections: cleanLabels(item.collections),
   tags: cleanLabels(item.tags),
   savedAt: item.savedAt ?? new Date().toISOString(),
@@ -96,7 +132,7 @@ export const updateReference = async (id, changes) => db.transaction("rw", db.re
 
 export const mergeReferences = async (keepId, otherId) => {
   if (keepId === otherId) return false
-  return db.transaction("rw", db.references, async () => {
+  return db.transaction("rw", db.references, db.notes, async () => {
     const [keep, other] = await db.references.bulkGet([keepId, otherId])
     if (!keep || !other) return false
     for (const key of ["journal", "year", "volume", "issue", "pages", "doi", "isbn", "abstract"]) {
@@ -110,39 +146,35 @@ export const mergeReferences = async (keepId, otherId) => {
     }
     keep.collections = cleanLabels([...(keep.collections ?? []), ...(other.collections ?? [])])
     keep.tags = cleanLabels([...(keep.tags ?? []), ...(other.tags ?? [])])
+    const status = READING_STATUSES.map(([value]) => value)
+    if (status.indexOf(other.readingStatus) > status.indexOf(keep.readingStatus)) keep.readingStatus = other.readingStatus
+    await db.notes.where("referenceIds").equals(otherId).modify(note => {
+      note.referenceIds = [...new Set(note.referenceIds.map(id => id === otherId ? keepId : id))]
+    })
     await db.references.put(keep)
     await db.references.delete(otherId)
     return true
   })
 }
 
-export const removeFromLibrary = async (id) => {
+const deleteReferences = async ids => {
   try {
-    await db.references.delete(id)
+    await db.transaction("rw", db.references, db.notes, async () => {
+      const removed = new Set(ids ?? await db.references.toCollection().primaryKeys())
+      await db.notes.where("referenceIds").anyOf([...removed]).distinct().modify(note => {
+        note.referenceIds = note.referenceIds.filter(id => !removed.has(id))
+      })
+      await db.references.bulkDelete([...removed])
+    })
     return true
   } catch {
     return false
   }
 }
 
-// Hapus banyak sekaligus (dipakai tombol "Hapus yang Dipilih")
-export const removeManyFromLibrary = async (ids) => {
-  try {
-    await db.references.bulkDelete(ids)
-    return true
-  } catch {
-    return false
-  }
-}
-
-export const clearLibrary = async () => {
-  try {
-    await db.references.clear()
-    return true
-  } catch {
-    return false
-  }
-}
+export const removeFromLibrary = id => deleteReferences([id])
+export const removeManyFromLibrary = ids => deleteReferences(ids)
+export const clearLibrary = () => deleteReferences()
 
 // --- Export ---
 

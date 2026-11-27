@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react"
 import { lookupOpenAccessPdf, fetchThumbnail } from "../lib/crossref"
 import { initCitationStyles, formatCitation, STYLES } from "../lib/citation"
-import { saveToLibrary, isInLibrary, updateReference } from "../lib/storage"
+import { saveToLibrary, isInLibrary, updateReference, READING_STATUSES } from "../lib/storage"
+import NotesPanel from "./NotesPanel"
 import MetadataEditor from "./MetadataEditor"
 import { CopyIcon, CheckIcon, BookIcon, ArrowLeftIcon } from "./icons"
 
@@ -134,6 +135,7 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
               setEditing(false)
             }} />}
             <ReferenceOrganization metadata={metadata} onSave={saveChanges} />
+            <NotesPanel referenceId={metadata.id} />
           </>}
 
           {metadata.abstract && (
@@ -209,15 +211,19 @@ function ReferenceOrganization({ metadata, onSave }) {
       await onSave({
         collections: fields.get("collections").split(","),
         tags: fields.get("tags").split(","),
+        readingStatus: fields.get("readingStatus"),
       })
-      setMessage("Koleksi dan tag disimpan.")
+      setMessage("Pengaturan referensi disimpan.")
     } catch (error) {
       setMessage(error.message)
     }
   }}>
     <label>Koleksi, pisahkan dengan koma<input name="collections" defaultValue={metadata.collections?.join(", ")} /></label>
     <label>Tag, pisahkan dengan koma<input name="tags" defaultValue={metadata.tags?.join(", ")} /></label>
-    <button className="link-pill">Simpan koleksi dan tag</button>
+    <label>Status baca<select name="readingStatus" defaultValue={metadata.readingStatus ?? "unread"}>
+      {READING_STATUSES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+    </select></label>
+    <button className="link-pill">Simpan pengaturan</button>
     <p role="status">{message}</p>
   </form>
 }
