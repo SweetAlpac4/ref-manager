@@ -224,8 +224,20 @@ export default function LibraryPanel() {
 
   return (
     <div className="library-panel">
+      <div className="page-heading">
+        <div><h1>Your library</h1><p>{items.length} {items.length === 1 ? "reference" : "references"} saved in this browser</p></div>
+        <div className="link-row">
+          <button className="link-pill" onClick={handleImportClick}>Import .json</button>
+          <button className="link-pill button-primary" onClick={() => setAdding(true)}>Add reference</button>
+        </div>
+      </div>
       {items.length === 0 && <p>Search for a reference or add one manually to start your library.</p>}
-      <LibraryBackup onImport={refresh} download={downloadFile} />
+      <nav className="library-navigation" aria-label="Library tools">
+        <button className="link-pill" onClick={() => setShowCloud(true)}>Cloud library</button>
+        <button className="link-pill" disabled={!items.length} onClick={() => setShowPdfSearch(true)}>Search PDF contents</button>
+        <button className="link-pill" onClick={() => setShowCitations(true)}>Citation workspace</button>
+        <button className="link-pill" onClick={() => setShowNotes(true)}>Research notes</button>
+      </nav>
       <div className="library-filters">
         <input type="search" aria-label="Search library" placeholder="Search title, author, DOI, or abstract" value={query} onChange={event => setQuery(event.target.value)} />
         <select aria-label="Smart collection" value={smart} onChange={event => setSmart(event.target.value)}>
@@ -241,7 +253,7 @@ export default function LibraryPanel() {
           {tags.map(value => <option key={value}>{value}</option>)}
         </select>
         <select aria-label="Filter by reading status" value={readingStatus} onChange={event => setReadingStatus(event.target.value)}>
-          <option value="">All reading statuses</option>
+          <option value="">All statuses</option>
           {READING_STATUSES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
         <select aria-label="Filter by publication year" value={year} onChange={event => setYear(event.target.value)}>
@@ -264,23 +276,23 @@ export default function LibraryPanel() {
               Delete selected ({selectedIds.size})
             </button>
           )}
-          <button className="link-pill" onClick={async () => downloadFile("library.bib", await exportLibraryAsBibtex(exportIds))}>Export .bib</button>
-          <button className="link-pill" onClick={async () => downloadFile("library.ris", await exportLibraryAsRis(exportIds))}>Export .ris</button>
-          <button className="link-pill" onClick={async () => downloadFile("library.json", await exportLibraryAsJson(exportIds), "application/json")}>Export .json</button>
-          <button className="link-pill" onClick={() => setShowCloud(true)}>Cloud library</button>
-          <button className="link-pill" disabled={!items.length} onClick={() => setShowPdfSearch(true)}>Search PDF contents</button>
-          <button className="link-pill" onClick={() => setShowCitations(true)}>Citation workspace</button>
-          <button className="link-pill" onClick={() => setShowNotes(true)}>Research notes</button>
-          <button className="link-pill" onClick={() => setAdding(true)}>Add reference</button>
-          <button className="link-pill" onClick={handleImportClick}>Import .json</button>
+          <details className="action-menu">
+            <summary className="menu-trigger">Export references</summary>
+            <div className="menu-options" onClick={event => {
+              if (event.target.closest("button")) event.currentTarget.closest("details").open = false
+            }}>
+              <button className="link-pill" onClick={async () => downloadFile("library.bib", await exportLibraryAsBibtex(exportIds))}>Export .bib</button>
+              <button className="link-pill" onClick={async () => downloadFile("library.ris", await exportLibraryAsRis(exportIds))}>Export .ris</button>
+              <button className="link-pill" onClick={async () => downloadFile("library.json", await exportLibraryAsJson(exportIds), "application/json")}>Export .json</button>
+            </div>
+          </details>
+          <button className="link-pill" disabled={items.length < 2} onClick={() => setShowDuplicates(value => !value)}>
+            {showDuplicates ? "Close duplicate review" : "Find duplicates"}
+          </button>
           <input ref={fileInputRef} type="file" accept="application/json" hidden onChange={handleFileChange} />
         </div>
       </div>
       {importMsg && <p className="import-msg">{importMsg}</p>}
-
-      <button className="link-pill" disabled={items.length < 2} onClick={() => setShowDuplicates(value => !value)}>
-        {showDuplicates ? "Close duplicate review" : "Find duplicates"}
-      </button>
       {showDuplicates && <div className="card">
         {duplicatePairs.length === 0 && <p>No potential duplicates found.</p>}
         {duplicatePairs.map(([first, second]) => <div key={first.id + second.id}>
@@ -312,22 +324,27 @@ export default function LibraryPanel() {
                 <li
                   key={item.id}
                   className={`library-item ${selectedIds.has(item.id) ? "selected" : ""}`}
-                  onClick={() => setOpenItem(item)}
                 >
                   <input
                     type="checkbox"
+                    aria-label={`Select ${item.title}`}
                     checked={selectedIds.has(item.id)}
                     onClick={e => e.stopPropagation()}
                     onChange={() => toggleOne(item.id)}
                   />
-                  <div className="library-item-main">
-                    <p className="library-item-title">{item.title}</p>
-                    <p className="library-item-meta">
+                  <button className="library-item-main" onClick={() => setOpenItem(item)}>
+                    <span className="library-item-title">{item.title}</span>
+                    <span className="library-item-meta">
                       {(item.authors || []).join(", ")}
                       {item.year ? ` · ${item.year}` : ""}
                       {item.journal ? ` · ${item.journal}` : ""}
-                    </p>
-                  </div>
+                    </span>
+                    <span className="reference-tags">
+                      <span className={`reference-tag status-${item.readingStatus ?? "unread"}`}>{READING_STATUSES.find(([value]) => value === (item.readingStatus ?? "unread"))?.[1]}</span>
+                      {(item.tags ?? []).slice(0, 3).map(value => <span className="reference-tag" key={value}>{value}</span>)}
+                      {(item.tags?.length ?? 0) > 3 && <span className="reference-tag">+{item.tags.length - 3}</span>}
+                    </span>
+                  </button>
                   <button className="remove-btn" onClick={(e) => handleRemove(item.id, e)} aria-label="Delete">✕</button>
                 </li>
               ))}
@@ -335,6 +352,7 @@ export default function LibraryPanel() {
           </div>
         )
       })}
+      <LibraryBackup onImport={refresh} download={downloadFile} />
     </div>
   )
 }

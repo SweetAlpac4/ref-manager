@@ -214,6 +214,7 @@ export default function CitationWorkspace({ references, onBack }) {
       </article>
     })}
     {output && !output.error && <section className="note-item">
+      <div className="link-row citation-downloads">
       <button className="link-pill" disabled={exporting} onClick={downloadWord}>
         {exporting ? "Creating Word document…" : "Download Word document (.docx)"}
       </button>
@@ -223,6 +224,7 @@ export default function CitationWorkspace({ references, onBack }) {
       {window.location.protocol === "https:" && <button className="link-pill" onClick={() => {
         downloadFile("ref-manager-word.xml", createWordManifest(window.location.origin), "application/xml")
       }}>Download Word add-in manifest</button>}
+      </div>
       <h3>Bibliography</h3>
       {output.bibliography ? <>
         <div className="citation-text bibliography-output" dangerouslySetInnerHTML={{ __html: output.htmlBibliography }} />

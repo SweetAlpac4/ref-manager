@@ -57,7 +57,7 @@ export default function MetadataEditor({ metadata = {}, onSave, onCancel }) {
     }
   }
 
-  return <form className="reference-fields" onSubmit={submit}>
+  return <form className="reference-fields metadata-editor" onSubmit={submit}>
     <label>Reference type
       <select name="type" defaultValue={type}>
         {!types.some(([id]) => id === type) && <option value={type}>{type}</option>}
@@ -68,10 +68,10 @@ export default function MetadataEditor({ metadata = {}, onSave, onCancel }) {
       <input name={key} type={key === "url" ? "url" : "text"} required={key === "title"} defaultValue={metadata[key] ?? ""}
         pattern={key === "year" ? "[0-9]{1,4}" : undefined} />
     </label>)}
-    <label>Authors, one per line in Last name, First name format
+    <label className="field-wide">Authors, one per line in Last name, First name format
       <textarea name="authors" rows={4} defaultValue={initialAuthors} />
     </label>
-    <label>Abstract<textarea name="abstract" rows={5} defaultValue={metadata.abstract ?? ""} /></label>
+    <label className="field-wide">Abstract<textarea name="abstract" rows={5} defaultValue={metadata.abstract ?? ""} /></label>
     <div className="link-row">
       <button className="link-pill" disabled={busy}>Save metadata</button>
       <button className="link-pill" type="button" onClick={onCancel}>Cancel</button>

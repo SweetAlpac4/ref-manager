@@ -4,10 +4,12 @@ import { parseBatchInput, runBatchSearch, MAX_BATCH_ITEMS } from "./lib/batch"
 import BatchResults from "./components/BatchResults"
 import LibraryPanel from "./components/LibraryPanel"
 import ReferenceDetail from "./components/ReferenceDetail"
-import { SearchIcon } from "./components/icons"
+import { SearchIcon, BookIcon } from "./components/icons"
+import { getInitialTheme, saveTheme } from "./lib/theme"
 import "./App.css"
 
 export default function App() {
+  const [theme, setTheme] = useState(getInitialTheme)
   const [tab, setTab] = useState("search") // "search" | "library"
   const [mode, setMode] = useState("doi") // "doi" | "title" | "batch"
   const [input, setInput] = useState("")
@@ -97,20 +99,39 @@ export default function App() {
 
   return (
     <div className="app">
-      <div className="container">
-
+      <aside className="sidebar">
         <header className="header">
-          <div className="logo"><span className="logo-rose">ref</span><span className="logo-blue">-manager</span></div>
-          <p className="tagline">Find references, organize your research, and format citations.</p>
+          <svg className="brand-mark" viewBox="0 0 28 32" fill="none" aria-hidden="true">
+            <path d="M7 3h17v25H7a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+            <path d="M4 25a3 3 0 0 1 3-3h17" stroke="currentColor" strokeWidth="1.7" />
+            <path d="M15 3h5v10l-2.5-2L15 13V3Z" fill="currentColor" />
+            <path d="M9 17h9" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+          </svg>
+          <div><div className="logo"><span>ref</span><span className="logo-rest">-manager</span></div><p className="brand-caption">Research library</p></div>
         </header>
-
-        <div className="top-tabs">
-          <button className={`top-tab ${tab === "search" ? "active" : ""}`} onClick={() => switchTab("search")}>Search</button>
-          <button className={`top-tab ${tab === "library" ? "active" : ""}`} onClick={() => switchTab("library")}>Library</button>
+        <span className="nav-caption">Workspace</span>
+        <nav className="top-tabs" aria-label="Main navigation">
+          <button className={`top-tab ${tab === "search" ? "active" : ""}`} aria-current={tab === "search" ? "page" : undefined} onClick={() => switchTab("search")}><SearchIcon />Search</button>
+          <button className={`top-tab ${tab === "library" ? "active" : ""}`} aria-current={tab === "library" ? "page" : undefined} onClick={() => switchTab("library")}><BookIcon />Library</button>
+        </nav>
+        <div className="sidebar-note">References are saved in this browser.</div>
+      </aside>
+      <div className="container">
+        <div className="workspace-bar">
+          <span>Workspace <span className="breadcrumb-divider">/</span> <strong>{tab === "search" ? "Search" : "Library"}</strong></span>
+          <div className="theme-switch" role="group" aria-label="Color theme">
+            {["light", "dark"].map(value => <button key={value} aria-pressed={theme === value} onClick={() => {
+              setTheme(value)
+              saveTheme(value)
+            }}><span aria-hidden="true" className={`theme-swatch theme-swatch-${value}`} />{value === "light" ? "Light" : "Dark"}</button>)}
+          </div>
         </div>
-
+        <main>
         {tab === "search" && (
           <>
+            <div className="page-heading search-heading">
+              <div><h1>Search references</h1><p>Enter a DOI or paper title. Use Batch to search multiple references.</p></div>
+            </div>
             <div className="card search-card">
               <div className="mode-toggle">
                 <button className={`mode-btn ${mode === "doi" ? "active" : ""}`} onClick={() => switchMode("doi")}>DOI</button>
@@ -121,6 +142,7 @@ export default function App() {
               {mode !== "batch" ? (
                 <div className="input-wrapper">
                   <input
+                    aria-label={mode === "doi" ? "Search by DOI" : "Search by title"}
                     className="input"
                     type="text"
                     placeholder={mode === "doi" ? "Example: 10.1109/JPROC.2014.2371999" : "Example: Software-Defined Networking: A Comprehensive Survey"}
@@ -136,6 +158,7 @@ export default function App() {
               ) : (
                 <div className="batch-input-wrapper">
                   <textarea
+                    aria-label="DOIs or titles to search"
                     className="batch-textarea"
                     rows={6}
                     placeholder={"Paste one DOI or title per line. For example:\n10.1109/JPROC.2014.2371999\nAttention Is All You Need\n10.1145/3292500.3330919"}
@@ -179,6 +202,7 @@ export default function App() {
         )}
 
         {tab === "library" && <LibraryPanel />}
+        </main>
 
         <footer className="footer">
           <p>Data from <a href="https://crossref.org" target="_blank" rel="noreferrer">CrossRef</a>, <a href="https://datacite.org" target="_blank" rel="noreferrer">DataCite</a> & <a href="https://unpaywall.org" target="_blank" rel="noreferrer">Unpaywall</a></p>
