@@ -1,8 +1,9 @@
 import { useRef, useState, useEffect, useMemo } from "react"
 import {
-  getLibrary, removeFromLibrary, removeManyFromLibrary, exportLibraryAsBibtex,
+  mergeReferences, getLibrary, removeFromLibrary, removeManyFromLibrary, exportLibraryAsBibtex,
   exportLibraryAsRis, exportLibraryAsJson, importLibraryFromJson,
 } from "../lib/storage"
+import { duplicateScore } from "../lib/duplicates"
 import ReferenceDetail from "./ReferenceDetail"
 
 const downloadFile = (filename, content, mime = "text/plain") => {
@@ -29,6 +30,7 @@ export default function LibraryPanel() {
   const [selectedIds, setSelectedIds] = useState(() => new Set())
   const [openItem, setOpenItem] = useState(null)
   const [importMsg, setImportMsg] = useState("")
+  const [showDuplicates, setShowDuplicates] = useState(false)
   const fileInputRef = useRef(null)
 
   const refresh = async () => {
@@ -56,6 +58,23 @@ export default function LibraryPanel() {
     }
     return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]))
   }, [items])
+
+  const duplicatePairs = useMemo(() => showDuplicates
+    ? items.flatMap((item, index) => items.slice(index + 1)
+      .filter(other => duplicateScore(item, other) > 0).map(other => [item, other]))
+    : [], [items, showDuplicates])
+
+  const mergePair = async (keep, other) => {
+    if (!window.confirm(`Pertahankan “${keep.title}” dan isi metadata yang kosong dari “${other.title}”?`)) return
+    try {
+      if (!await mergeReferences(keep.id, other.id)) throw new Error()
+      setSelectedIds(new Set())
+      await refresh()
+      setImportMsg("Referensi digabung.")
+    } catch {
+      setImportMsg("Gagal menggabungkan referensi.")
+    }
+  }
 
   const allIds = useMemo(() => items.map(i => i.id), [items])
   const allSelected = allIds.length > 0 && allIds.every(id => selectedIds.has(id))
@@ -176,6 +195,23 @@ export default function LibraryPanel() {
         </div>
       </div>
       {importMsg && <p className="import-msg">{importMsg}</p>}
+
+      <button className="link-pill" onClick={() => setShowDuplicates(value => !value)}>
+        {showDuplicates ? "Tutup pemeriksaan" : "Cari duplikat"}
+      </button>
+      {showDuplicates && <div className="card">
+        {duplicatePairs.length === 0 && <p>Tidak ada kandidat duplikat.</p>}
+        {duplicatePairs.map(([first, second]) => <div key={first.id + second.id}>
+          {[first, second].map((item, index) => <div key={item.id}>
+            <button className="link-pill" onClick={() => setOpenItem(item)}>
+              {item.title} · {item.authors.join(", ")} · {item.year} {item.doi}
+            </button>
+            <button className="link-pill" onClick={() => mergePair(item, [second, first][index])}>
+              Pertahankan referensi ini
+            </button>
+          </div>)}
+        </div>)}
+      </div>}
 
       {groups.map(([key, groupItems]) => {
         const groupIds = groupItems.map(i => i.id)

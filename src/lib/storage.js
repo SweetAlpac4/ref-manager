@@ -1,4 +1,5 @@
 import Dexie from "dexie"
+import { duplicateScore, normalizeDoi } from "./duplicates.js"
 
 // --- Database ---
 // IndexedDB dipakai untuk data yang bisa berkembang besar (referensi + metadata).
@@ -37,7 +38,7 @@ const sanitizeEntry = (item) => ({
   volume: item.volume ?? null,
   issue: item.issue ?? null,
   pages: item.pages ?? null,
-  doi: item.doi ?? null,
+  doi: normalizeDoi(item.doi) || null,
   isbn: item.isbn ?? null,
   type: item.type ?? "article-journal",
   abstract: item.abstract ?? null,
@@ -51,33 +52,48 @@ export const getLibrary = async () => {
 
 export const isInLibrary = async (doi) => {
   if (!doi) return false
-  const count = await db.references.where("doi").equals(doi).count()
-  return count > 0
+  return (await getSavedDois()).has(normalizeDoi(doi))
 }
 
 // Batch version — jauh lebih cepat daripada memanggil isInLibrary() satu-satu
 // dalam loop (mis. untuk menandai status "Tersimpan" di hasil batch search).
 export const getSavedDois = async () => {
   const items = await db.references.toArray()
-  return new Set(items.map(i => i.doi).filter(Boolean))
+  return new Set(items.map(i => normalizeDoi(i.doi)).filter(Boolean))
 }
 
 export const saveToLibrary = async (metadata) => {
-  if (metadata.doi) {
-    const existing = await db.references.where("doi").equals(metadata.doi).count()
-    if (existing > 0) return { ok: false, reason: "duplicate" }
-  }
-  const entry = sanitizeEntry({
-    ...metadata,
-    id: crypto.randomUUID(),
-    savedAt: new Date().toISOString(),
-  })
   try {
-    await db.references.add(entry)
-    return { ok: true, reason: null }
+    return await db.transaction("rw", db.references, async () => {
+      const entries = await db.references.toArray()
+      if (entries.some(item => duplicateScore(item, metadata) >= 2)) {
+        return { ok: false, reason: "duplicate" }
+      }
+      await db.references.add(sanitizeEntry({ ...metadata, id: crypto.randomUUID() }))
+      return { ok: true, reason: null }
+    })
   } catch {
     return { ok: false, reason: "storage_full" }
   }
+}
+
+export const mergeReferences = async (keepId, otherId) => {
+  if (keepId === otherId) return false
+  return db.transaction("rw", db.references, async () => {
+    const [keep, other] = await db.references.bulkGet([keepId, otherId])
+    if (!keep || !other) return false
+    for (const key of ["journal", "year", "volume", "issue", "pages", "doi", "isbn", "abstract"]) {
+      if (!keep[key] && other[key]) keep[key] = other[key]
+    }
+    if (!keep.authors.length) {
+      keep.authors = other.authors
+      keep.citationAuthors = other.citationAuthors
+      keep.authorsStructured = other.authorsStructured
+    }
+    await db.references.put(keep)
+    await db.references.delete(otherId)
+    return true
+  })
 }
 
 export const removeFromLibrary = async (id) => {
@@ -249,21 +265,21 @@ export const importLibraryFromJson = async (jsonText) => {
     return { ok: false, error: "Format JSON tidak sesuai (harus berupa array referensi)." }
   }
 
-  const existingDois = await getSavedDois()
-  let added = 0, skipped = 0, duplicates = 0
-  const toAdd = []
-
-  for (const raw of parsed) {
-    if (!isValidEntry({ ...raw, id: raw?.id ?? "tmp" })) { skipped++; continue }
-    if (raw.doi && existingDois.has(raw.doi)) { duplicates++; continue }
-    if (raw.doi) existingDois.add(raw.doi)
-    toAdd.push(sanitizeEntry({ ...raw, id: crypto.randomUUID(), savedAt: new Date().toISOString() }))
-    added++
-  }
-
   try {
-    await db.references.bulkAdd(toAdd)
-    return { ok: true, added, skipped, duplicates }
+    return await db.transaction("rw", db.references, async () => {
+      const existing = await db.references.toArray()
+      const toAdd = []
+      let skipped = 0, duplicates = 0
+      for (const raw of parsed) {
+        if (!isValidEntry({ ...raw, id: raw?.id ?? "tmp" })) { skipped++; continue }
+        if (existing.some(item => duplicateScore(item, raw) >= 2)) { duplicates++; continue }
+        const entry = sanitizeEntry({ ...raw, id: crypto.randomUUID() })
+        existing.push(entry)
+        toAdd.push(entry)
+      }
+      await db.references.bulkAdd(toAdd)
+      return { ok: true, added: toAdd.length, skipped, duplicates }
+    })
   } catch {
     return { ok: false, error: "Gagal menulis ke penyimpanan lokal." }
   }
