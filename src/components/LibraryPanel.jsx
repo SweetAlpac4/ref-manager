@@ -4,6 +4,7 @@ import {
   exportLibraryAsRis, exportLibraryAsJson, importLibraryFromJson,
 } from "../lib/storage"
 import { duplicateScore, normalizeText } from "../lib/duplicates"
+import CitationWorkspace from "./CitationWorkspace"
 import NotesPanel from "./NotesPanel"
 import MetadataEditor from "./MetadataEditor"
 import ReferenceDetail from "./ReferenceDetail"
@@ -33,6 +34,7 @@ export default function LibraryPanel() {
   const [openItem, setOpenItem] = useState(null)
   const [importMsg, setImportMsg] = useState("")
   const [showDuplicates, setShowDuplicates] = useState(false)
+  const [showCitations, setShowCitations] = useState(false)
   const [showNotes, setShowNotes] = useState(false)
   const [readingStatus, setReadingStatus] = useState("")
   const [adding, setAdding] = useState(false)
@@ -156,6 +158,8 @@ export default function LibraryPanel() {
   const exportIds = selectedIds.size > 0 ? [...selectedIds] : null
   const exportCountLabel = selectedIds.size > 0 ? `${selectedIds.size} terpilih` : "semua"
 
+  if (showCitations) return <CitationWorkspace references={items} onBack={() => setShowCitations(false)} />
+
   if (showNotes) return <NotesPanel onBack={() => setShowNotes(false)} />
 
   if (adding) {
@@ -197,6 +201,7 @@ export default function LibraryPanel() {
       <div className="card library-empty">
         <p>Belum ada referensi tersimpan. Cari referensi lalu klik &quot;Simpan ke Library&quot;.</p>
         <div className="library-actions">
+          <button className="link-pill" onClick={() => setShowCitations(true)}>Ruang sitasi</button>
           <button className="link-pill" onClick={() => setShowNotes(true)}>Catatan riset</button>
           <button className="link-pill" onClick={() => setAdding(true)}>Tambah referensi</button>
           <button className="link-pill" onClick={handleImportClick}>Impor dari JSON</button>
@@ -242,6 +247,7 @@ export default function LibraryPanel() {
           <button className="link-pill" onClick={async () => downloadFile("library.bib", await exportLibraryAsBibtex(exportIds))}>Ekspor .bib</button>
           <button className="link-pill" onClick={async () => downloadFile("library.ris", await exportLibraryAsRis(exportIds))}>Ekspor .ris</button>
           <button className="link-pill" onClick={async () => downloadFile("library.json", await exportLibraryAsJson(exportIds), "application/json")}>Ekspor .json</button>
+          <button className="link-pill" onClick={() => setShowCitations(true)}>Ruang sitasi</button>
           <button className="link-pill" onClick={() => setShowNotes(true)}>Catatan riset</button>
           <button className="link-pill" onClick={() => setAdding(true)}>Tambah referensi</button>
           <button className="link-pill" onClick={handleImportClick}>Impor .json</button>

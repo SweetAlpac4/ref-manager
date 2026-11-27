@@ -633,3 +633,28 @@ body {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+.citation-workspace {
+  text-align: start;
+}
+
+.citation-item-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: .5rem;
+  width: 100%;
+}
+
+.citation-item-fields input {
+  min-width: 0;
+}
+
+.citation-workspace .reference-fields .checkbox-label,
+.pdf-reader .reference-fields .checkbox-label {
+  display: flex;
+  align-items: baseline;
+}
+
+.bibliography-output p + p {
+  margin-top: .5rem;
+}

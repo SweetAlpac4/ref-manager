@@ -1,5 +1,6 @@
-import { Cite, plugins } from "@citation-js/core"
+import { Cite, plugins, util } from "@citation-js/core"
 import "@citation-js/plugin-csl"
+import CSL from "citeproc"
 import { normalizeDoi } from "./duplicates.js"
 
 const bundledStyles = {
@@ -7,6 +8,7 @@ const bundledStyles = {
   ieee: new URL("./styles/ieee.csl", import.meta.url),
   harvard: new URL("./styles/harvard-cite-them-right.csl", import.meta.url),
   chicago: new URL("./styles/chicago-author-date.csl", import.meta.url),
+  "chicago-note": new URL("./styles/chicago-notes-bibliography.csl", import.meta.url),
 }
 
 const loadStyle = async url => {
@@ -89,3 +91,45 @@ export const STYLES = [
   { id: "harvard", label: "Harvard (Cite Them Right)" },
   { id: "chicago", label: "Chicago (Author–Date)" },
 ]
+
+
+export const WORKSPACE_STYLES = [
+  ...STYLES, { id: "chicago-note", label: "Chicago (Notes–Bibliography)" },
+]
+
+export function formatCitationWorkspace(references, groups, style, format = "text") {
+  const { templates, locales } = plugins.config.get("@csl")
+  const template = templates.get(style)
+  if (!template) throw new Error("Gaya sitasi belum tersedia.")
+  const noteStyle = /<style\b[^>]*\bclass=["']note["']/.test(template)
+  const items = new Map(util.downgradeCsl(references.map(toCSLInput)).map(item => [item.id, item]))
+  const citeproc = new CSL.Engine({
+    retrieveLocale: language => locales.has(language) ? locales.get(language) : false,
+    retrieveItem: id => items.get(id),
+  }, template)
+  citeproc.setOutputFormat(format)
+  citeproc.opt.development_extensions.wrap_url_and_doi = false
+  const clusters = groups.map((group, index) => ({
+    citationID: group.id,
+    properties: { noteIndex: noteStyle ? index + 1 : 0 },
+    citationItems: group.items.map(({ id, locator, label, prefix, suffix, suppressAuthor }) => ({
+      id,
+      locator: locator?.trim() || undefined,
+      label: locator?.trim() ? label || "page" : undefined,
+      prefix: prefix?.trim() || undefined,
+      suffix: suffix?.trim() || undefined,
+      "suppress-author": suppressAuthor || undefined,
+    })),
+  }))
+  const citations = citeproc.rebuildProcessorState(clusters, format, []).map(([id, , value]) => ({ id, value }))
+  // Some CSL styles define citations only.
+  const bibliography = citeproc.makeBibliography()
+  return {
+    citations, noteStyle,
+    bibliography: bibliography ? bibliography[0].bibstart + bibliography[1].join("") + bibliography[0].bibend : "",
+  }
+}
+
+export function registerCitationStyle(id, xml) {
+  plugins.config.get("@csl").templates.add(id, xml)
+}
