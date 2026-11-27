@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { formatCitationWorkspace, initCitationStyles, registerCitationStyle, WORKSPACE_STYLES } from "../lib/citation"
+import { downloadFile } from "../lib/download"
 import { cleanCitationMarkup, copyCitation } from "../lib/citationClipboard"
 import { fetchCatalogStyle, prepareCustomStyle } from "../lib/cslImport"
 
@@ -23,6 +24,7 @@ export default function CitationWorkspace({ references, onBack }) {
   const [status, setStatus] = useState("loading")
   const [message, setMessage] = useState("")
   const [pick, setPick] = useState("")
+  const [exporting, setExporting] = useState(false)
   const [importing, setImporting] = useState(false)
   const [showStyles, setShowStyles] = useState(false)
 
@@ -105,11 +107,26 @@ export default function CitationWorkspace({ references, onBack }) {
     }
   }
 
+  const downloadWord = async () => {
+    setExporting(true)
+    setMessage("")
+    try {
+      const { exportCitationDocx } = await import("../lib/citationDocx")
+      const label = styles.find(item => item.id === style)?.label
+      downloadFile("citation-draft.docx", await exportCitationDocx(output, groups, label))
+      setMessage("Word document ready.")
+    } catch {
+      setMessage("Could not create the Word document.")
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return <section className="card citation-workspace">
     <button className="back-btn" onClick={onBack}>Back to library</button>
     <h2>Citation workspace</h2>
     <div className="library-filters">
-      <label>Citation style <select value={style} onChange={event => setStyle(event.target.value)}>
+      <label>Citation style <select aria-label="Citation style" value={style} onChange={event => setStyle(event.target.value)}>
         {styles.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
       </select></label>
       <button className="link-pill" onClick={() => setShowStyles(value => !value)}>Add a CSL style</button>
@@ -170,6 +187,13 @@ export default function CitationWorkspace({ references, onBack }) {
             ...current, items: current.items.filter((_, position) => position !== itemIndex),
           }))}>Remove source</button>}
         </div>)}
+        <details>
+          <summary>Document text for export</summary>
+          <div className="reference-fields">
+            <label>Text before this citation<textarea rows={3} value={group.paragraph ?? ""}
+              onChange={event => updateGroup(group.id, current => ({ ...current, paragraph: event.target.value }))} /></label>
+          </div>
+        </details>
         {result && <p className="citation-text" dangerouslySetInnerHTML={{ __html: markup }} />}
         <div className="link-row">
           <button className="link-pill" disabled={!nextReference} onClick={() => updateGroup(group.id, current => ({
@@ -183,6 +207,9 @@ export default function CitationWorkspace({ references, onBack }) {
       </article>
     })}
     {output && !output.error && <section className="note-item">
+      <button className="link-pill" disabled={exporting} onClick={downloadWord}>
+        {exporting ? "Creating Word document…" : "Download Word document (.docx)"}
+      </button>
       <h3>Bibliography</h3>
       {output.bibliography ? <>
         <div className="citation-text bibliography-output" dangerouslySetInnerHTML={{ __html: output.htmlBibliography }} />

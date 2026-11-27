@@ -4,6 +4,7 @@ import {
   exportLibraryAsRis, exportLibraryAsJson, importLibraryFromJson,
 } from "../lib/storage"
 import { duplicateScore, normalizeText } from "../lib/duplicates"
+import { downloadFile } from "../lib/download"
 import LibraryBackup from "./LibraryBackup"
 import CitationWorkspace from "./CitationWorkspace"
 import NotesPanel from "./NotesPanel"
@@ -11,16 +12,6 @@ import MetadataEditor from "./MetadataEditor"
 import ReferenceDetail from "./ReferenceDetail"
 
 const PdfLibrarySearch = lazy(() => import("./PdfLibrarySearch"))
-
-const downloadFile = (filename, content, mime = "text/plain") => {
-  const blob = new Blob([content], { type: mime })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
-}
 
 const dateKey = (isoString) => (isoString || "").slice(0, 10) // "2026-09-14"
 

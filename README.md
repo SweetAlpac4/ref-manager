@@ -21,6 +21,8 @@ A reference's detail page formats bibliography entries in APA 7, IEEE, Harvard (
 
 The bibliography updates from the sources in your draft. Copy the results into Word, LibreOffice, or Google Docs. Formatting such as italics is preserved when your browser supports HTML clipboard data. For more styles, import a `.csl` file or enter an ID from the [CSL style catalog](https://www.zotero.org/styles). Imported styles are available for the current workspace session. The library also exports BibTeX and RIS.
 
+Use **Download Word document (.docx)** to export an editable draft with its citations and bibliography. You can add text before each citation under **Document text for export**. Note-based styles create native Word footnotes. The file is generated in your browser.
+
 ## Back up and move your library
 
 Open **Library → Library backup** to download a JSON file containing references, collections, tags, notes, PDFs, and annotations. Restore it in another browser to move your library. When a reference already exists in the destination, the restore keeps its data and adds collection and tag memberships. The regular JSON export contains references only.

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react"
+import { downloadFile } from "../lib/download"
 import { attachPdf, deleteAttachment, getAttachments } from "../lib/storage"
 
 const PdfReader = lazy(() => import("./PdfReader"))
@@ -51,15 +52,6 @@ export default function PdfAttachments({ referenceId, target, onNoteCreated, onM
     }
   }
 
-  const download = item => {
-    const url = URL.createObjectURL(item.file)
-    const link = document.createElement("a")
-    link.href = url
-    link.download = item.name
-    link.click()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
-  }
-
   return <section className="notes-panel">
     <h2>PDF attachments</h2>
     <label>
@@ -70,7 +62,7 @@ export default function PdfAttachments({ referenceId, target, onNoteCreated, onM
       <p>{item.name}</p>
       <div className="link-row">
         <button className="link-pill" onClick={() => setOpened({ attachment: item, page: 1 })}>Read PDF</button>
-        <button className="link-pill" onClick={() => download(item)}>Download</button>
+        <button className="link-pill" onClick={() => downloadFile(item.name, item.file)}>Download</button>
         <button className="link-pill link-pill-danger" onClick={() => remove(item)}>Delete attachment</button>
       </div>
     </article>)}
