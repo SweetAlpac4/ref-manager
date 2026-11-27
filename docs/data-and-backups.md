@@ -24,7 +24,7 @@ Local data belongs to the current browser profile and site origin. A different b
 ## Use the cloud library on another device
 
 1. Open **Library → Cloud library** and sign in. On a configured deployment, **Create a free account** starts email/password signup.
-2. Choose a local entry and click **Copy reference to cloud**, or choose **Add cloud reference**. Open the cloud entry to change metadata, labels, reading status, or its cloud note.
+2. Open **Copy from this browser**, check the local references you want, and choose **Copy selected to cloud**. **Select all available** selects every local reference the app has not matched to a cloud record. You can also use **Add cloud reference** to enter a new source manually.
 3. To share a PDF across your own devices, upload it from the cloud entry. The limit is one PDF per reference, up to 20 MB. Open or download it while signed in. If opening a new tab is blocked, use **Download PDF**.
 4. Sign in to the same account on the other device. Use **Save to this browser** if you want a local metadata copy. To annotate a cloud PDF locally, download it and attach it to that local entry.
 

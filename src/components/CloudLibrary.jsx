@@ -4,9 +4,10 @@ import CloudConflict from "./CloudConflict"
 import CloudPdf from "./CloudPdf"
 import { cloudDraft, CloudRevisionConflict, hasCloudChanges } from "../lib/cloudChanges"
 import { normalizeText } from "../lib/duplicates"
+import { findUncopiedReferences } from "../lib/cloudCopies"
 import { READING_STATUSES, saveToLibrary } from "../lib/storage"
 import {
-  getCloudReference, getCloudReferences, addCloudReference,
+  getCloudReference, getCloudReferences, addCloudReference, copyCloudReferences,
   removeCloudReference, cloudClient, updateCloudReference,
 } from "../lib/cloudLibrary"
 
@@ -73,13 +74,13 @@ export default function CloudLibrary({ personalReferences, onPersonalChange, onB
     {authMessage && <p role="status">{authMessage}</p>}
     {session && <>
       <button className="link-pill" onClick={signOut}>Sign out</button>
-      <CloudReferences key={session.user.id}
+      <CloudReferences key={session.user.id} ownerId={session.user.id}
         personalReferences={personalReferences} onPersonalChange={onPersonalChange} />
     </>}
   </section>
 }
 
-function CloudReferences({ personalReferences, onPersonalChange }) {
+function CloudReferences({ ownerId, personalReferences, onPersonalChange }) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshMessage, setRefreshMessage] = useState("")
@@ -90,6 +91,7 @@ function CloudReferences({ personalReferences, onPersonalChange }) {
   const [conflict, setConflict] = useState(null)
   const [query, setQuery] = useState("")
   const [busy, setBusy] = useState(false)
+  const [copyIds, setCopyIds] = useState(() => new Set())
 
   const refresh = () => setRefreshVersion(value => value + 1)
 
@@ -189,6 +191,16 @@ function CloudReferences({ personalReferences, onPersonalChange }) {
   const selected = view?.record
   const row = selected && rows.find(item => item.id === selected.id)
   const stale = row && row.revision !== selected.revision
+  const candidates = view ? [] : findUncopiedReferences(personalReferences, rows)
+  const selectedForCopy = candidates.filter(item => copyIds.has(item.id))
+
+  const copySelected = async () => {
+    const { copied, skipped, complete } = await copyCloudReferences(selectedForCopy, ownerId)
+    const status = `Copied ${copied} ${copied === 1 ? "reference" : "references"}.${skipped ? ` Skipped ${skipped} already represented in this copy or in the cloud.` : ""}`
+    setMessage(complete ? status : `${status} The copy stopped before finishing. You can retry the remaining selection.`)
+    if (complete) setCopyIds(new Set())
+    refresh()
+  }
 
   return <>
     {refreshMessage && <p role="alert">{refreshMessage}</p>}
@@ -250,21 +262,43 @@ function CloudReferences({ personalReferences, onPersonalChange }) {
         <div className="library-filters">
           <input type="search" aria-label="Search cloud library" placeholder="Search titles" value={query}
             onChange={event => setQuery(event.target.value)} />
-          <button className="link-pill" onClick={refresh}>Refresh</button>
-          <button className="link-pill" onClick={() => setView({ mode: "add" })}>Add cloud reference</button>
+          <button className="link-pill" disabled={busy} onClick={refresh}>Refresh</button>
+          <button className="link-pill" disabled={busy} onClick={() => setView({ mode: "add" })}>Add cloud reference</button>
         </div>
-        {personalReferences.length > 0 && <form className="library-filters" onSubmit={event => {
-          event.preventDefault()
-          const id = new FormData(event.currentTarget).get("reference")
-          const reference = personalReferences.find(item => item.id === id)
-          if (reference) run(() => add(reference))
-        }}>
-          <select name="reference" aria-label="Local reference to copy">
-            {personalReferences.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
-          </select>
-          <button className="link-pill" disabled={busy}>Copy reference to cloud</button>
-        </form>}
-        <p>Copy a reference to save its metadata to this account. Open a cloud reference to upload a private PDF. Use a library backup to move local annotations and notes.</p>
+        {personalReferences.length > 0 && <details className="library-backup cloud-copy">
+          <summary>Copy from this browser ({candidates.length} available)</summary>
+          <p>References already in the cloud are skipped. Upload PDFs separately from each cloud reference.</p>
+          {candidates.length === 0 && <p>All local references are already represented in the cloud library.</p>}
+          {candidates.length > 0 && <form onSubmit={event => {
+            event.preventDefault()
+            if (!busy && selectedForCopy.length) run(copySelected)
+          }}>
+            <div className="library-filters">
+              <button type="button" className="link-pill" disabled={busy || selectedForCopy.length === candidates.length}
+                onClick={() => setCopyIds(new Set(candidates.map(item => item.id)))}>Select all available</button>
+              <button type="button" className="link-pill" disabled={busy || !selectedForCopy.length}
+                onClick={() => setCopyIds(new Set())}>Clear selection</button>
+            </div>
+            <fieldset className="cloud-copy-list" disabled={busy}>
+              <legend>Local references</legend>
+              {candidates.map(item => <label className="checkbox-label" key={item.id}>
+                <input type="checkbox" checked={copyIds.has(item.id)} onChange={event => {
+                  const checked = event.target.checked
+                  setCopyIds(previous => {
+                    const next = new Set(previous)
+                    if (checked) next.add(item.id)
+                    else next.delete(item.id)
+                    return next
+                  })
+                }} />
+                <span>{item.title}{item.year ? ` (${item.year})` : ""}</span>
+              </label>)}
+            </fieldset>
+            <button className="link-pill button-primary" disabled={busy || !selectedForCopy.length}>
+              {busy ? "Copying…" : `Copy selected to cloud (${selectedForCopy.length})`}
+            </button>
+          </form>}
+        </details>}
         {rows.filter(item => normalizeText(item.title).includes(normalizeText(query))).map(item =>
           <article className="note-item" key={item.id}>
             <button className="link-pill" disabled={busy} onClick={() => open(item.id)}>{item.title}</button>

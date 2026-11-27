@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js"
 import { CloudRevisionConflict } from "./cloudChanges.js"
 import { normalizeReferenceMetadata } from "./referenceMetadata.js"
 import { assertPdf } from "./pdfFile.js"
+import { findUncopiedReferences } from "./cloudCopies.js"
 
 const url = import.meta.env.VITE_SUPABASE_URL?.trim()
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim()
@@ -10,6 +11,12 @@ export const cloudClient = /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(url)
 
 const table = () => cloudClient.from("ref_personal_references")
 const pageSize = 200
+const copyBatchSize = 25
+const summaryFields = [
+  "id", "title", "revision", "doi:metadata->>doi", "isbn:metadata->>isbn",
+  "year:metadata->>year", "type:metadata->>type", "authors:metadata->authors",
+  "citationAuthors:metadata->citationAuthors", "authorsStructured:metadata->authorsStructured",
+].join(",")
 
 async function read(request) {
   const { data, error } = await request
@@ -21,7 +28,7 @@ export async function getCloudReferences() {
   const rows = []
   let after
   for (;;) {
-    const query = table().select("id,title,revision").order("id").limit(pageSize)
+    const query = table().select(summaryFields).order("id").limit(pageSize)
     const page = await read(after ? query.gt("id", after) : query)
     rows.push(...page)
     if (page.length < pageSize) break
@@ -37,6 +44,29 @@ export async function getCloudReference(id) {
 
 export const addCloudReference = item =>
   read(table().insert({ metadata: normalizeReferenceMetadata(item) }).select("id").single())
+
+export async function copyCloudReferences(items, ownerId) {
+  const latest = await getCloudReferences()
+  const missing = []
+  for (const item of findUncopiedReferences(items, latest)) {
+    if (findUncopiedReferences([item], missing).length) missing.push(item)
+  }
+
+  const skipped = items.length - missing.length
+  let copied = 0
+  for (let offset = 0; offset < missing.length; offset += copyBatchSize) {
+    const batch = missing.slice(offset, offset + copyBatchSize)
+    try {
+      const { data, error } = await cloudClient.auth.getSession()
+      if (error || data.session?.user.id !== ownerId) return { copied, skipped, complete: false }
+      await read(table().insert(batch.map(item => ({ metadata: normalizeReferenceMetadata(item) }))))
+      copied += batch.length
+    } catch {
+      return { copied, skipped, complete: false }
+    }
+  }
+  return { copied, skipped, complete: true }
+}
 
 export async function updateCloudReference(record, changes) {
   const patch = {}

@@ -12,7 +12,8 @@
     "test:metadata": "node test_reference_metadata.mjs",
     "test:library": "node test_library_workflows.mjs",
     "test:word": "node test_word_citations.mjs",
-    "test:cloud": "node test_cloud_library.mjs"
+    "test:cloud": "node test_cloud_library.mjs",
+    "test:docx": "npm run build && node --test test_docx_export.mjs"
   },
   "dependencies": {
     "@citation-js/core": "^0.7.21",
@@ -35,7 +36,9 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "fake-indexeddb": "6.2.8",
+    "fflate": "0.8.3",
     "globals": "^17.6.0",
+    "playwright": "1.65.1",
     "vite": "^8.0.12"
   }
 }

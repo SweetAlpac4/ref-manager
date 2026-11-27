@@ -98,6 +98,8 @@ select { padding-right: 30px !important; appearance: none; background-image: url
 .library-backup { border-top: 1px solid var(--border); padding-top: 14px; font-size: .875rem; color: var(--muted); }
 .library-backup summary { width: fit-content; color: var(--text); font-weight: 500; }
 .library-backup p { margin-top: 12px; max-width: 65ch; }
+.cloud-copy-list { min-inline-size: 0; max-height: 15rem; overflow: auto; display: grid; gap: 4px; border: 1px solid var(--border); border-radius: 6px; padding: 8px; margin: 8px 0 12px; }
+.cloud-copy-list .checkbox-label { padding: 4px; overflow-wrap: anywhere; }
 .library-empty { padding: 36px; text-align: center; align-items: center; color: var(--muted); }
 .result-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); align-items: start; gap: 24px; }
 .detail-view { margin-top: 8px; }

@@ -70,7 +70,7 @@ Local data lives in IndexedDB in the current browser profile and site origin. Ke
 
 ## Optional cloud library
 
-Open **Library → Cloud library** and sign in to a configured Supabase deployment. You can create cloud references or copy reference metadata between the local and cloud libraries. Copies are independent. The cloud side stores collections, tags, reading status, and one note per reference.
+Open **Library → Cloud library** and sign in to a configured Supabase deployment. Under **Copy from this browser**, check individual references or choose **Select all available**, then click **Copy selected to cloud**. References matched to cloud records are skipped. You can also save cloud references back to the browser. Copies are independent. The cloud side stores collections, tags, reading status, and one note per reference.
 
 Cloud records are scoped to your account. The view shows when it last checked for updates and refreshes every 30 seconds while open, when you return to the tab, and after writes. If another edit changes the revision, the app keeps your draft and lets you compare overlapping fields before saving.
 
@@ -101,6 +101,15 @@ npm run build
 ```
 
 These checks cover citation styles, numbering and footnotes, local-to-cloud metadata round trips, library filtering and backups, conflict recovery, and Word citation refresh logic. `npm run test:cloud` separately checks account isolation, stale revisions, and private PDF access against a local Supabase stack. The Word tests exercise formatting and refresh logic in Node. Use a supported Word client to check sideloading and document insertion. [Local cloud test setup](supabase/README.md#test-locally)
+
+To test DOCX downloads from the browser, install Playwright's Chromium and run the export test.
+
+```sh
+npx playwright install chromium
+npm run test:docx
+```
+
+The test builds the app, exports APA and Chicago drafts through the Citation workspace, and checks the document text, bibliography formatting, and native footnotes inside the downloaded files.
 
 ## Deploy
 

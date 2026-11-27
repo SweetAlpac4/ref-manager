@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import "fake-indexeddb/auto"
 import { cloudDraft, rebaseCloudDraft } from "./src/lib/cloudChanges.js"
+import { findUncopiedReferences } from "./src/lib/cloudCopies.js"
 import { filterLibrary } from "./src/lib/libraryFilters.js"
 import { normalizeReferenceMetadata } from "./src/lib/referenceMetadata.js"
 import {
@@ -9,6 +10,21 @@ import {
   getWorkspace, importLibraryFromJson, saveNote, saveToLibrary,
 } from "./src/lib/storage.js"
 import { exportWorkspaceBackup, importWorkspaceBackup } from "./src/lib/workspaceBackup.js"
+
+test("cloud copy omits matching DOIs and known works without a DOI", () => {
+  const local = [
+    { id: "doi", title: "Local title", doi: "https://doi.org/10.1234/Paper" },
+    { id: "book", title: "Research handbook", authors: ["Jane Doe"], year: "2020" },
+    { id: "other-doi", title: "Different work", doi: "10.1234/other" },
+    { id: "edition", title: "Research handbook", authors: ["Jane Doe"], year: "2024" },
+  ]
+  const cloud = [
+    { title: "Corrected title", doi: "10.1234/paper" },
+    { title: "Research Handbook", authorsStructured: [{ family: "Doe" }], year: "2020" },
+    { title: "Different work", doi: "10.1234/different" },
+  ]
+  assert.deepEqual(findUncopiedReferences(local, cloud).map(item => item.id), ["other-doi", "edition"])
+})
 
 test("cloud conflict recovery keeps independent changes and shows overlapping edits", () => {
   const base = {
