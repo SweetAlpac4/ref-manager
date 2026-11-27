@@ -1,27 +1,19 @@
-# Team library setup
+# Cloud library setup
 
-Ref Manager connects to one private team library per deployment. Supabase Free covers a team of up to 30 accounts within the project's database and egress quotas. A Free project can pause after inactivity. See [Supabase pricing](https://supabase.com/pricing).
+The personal library works locally without an account. A dedicated Supabase project enables optional private cloud libraries. People can create their own accounts. Supabase Free limits apply to the project and the organization. See [Supabase pricing](https://supabase.com/pricing).
 
-1. Create a dedicated Supabase project for Ref Manager. Apply the SQL in [the shared library migration](migrations/20261127044906_shared_team_library.sql) using the project's SQL Editor, or apply the migration with the Supabase CLI linked to that project.
-2. Enable email/password sign-in in Supabase Auth. For an invitation-only setup, disable public signup, create each account under **Authentication → Users**, and use confirmed accounts. Give each member their credentials privately.
-3. Add the invited account's user ID to the membership table from the SQL Editor.
-
-   ```sql
-   insert into public.ref_team_members (user_id)
-   values ('00000000-0000-0000-0000-000000000000');
-   ```
-
-   Replace the example UUID with the actual Auth user ID. To revoke access, delete that user's row from `public.ref_team_members`.
-
-4. Set the project coordinates for Vite in `.env.local` locally and in Vercel for the target environment.
+1. In the new Ref Manager project, enable the Data API and automatic RLS, and leave automatic Data API grants off. The migrations explicitly grant table access and define RLS policies.
+2. In **Project Settings → Integrations**, connect `SweetAlpac4/ref-manager` with working directory `.`. If you enable production deployment, use the repository's production branch `master`. The personal cloud library migration is [here](migrations/20261127050315_personal_cloud_library.sql). The earlier team tables and migration history are retained. To set up without GitHub, apply migrations to the dedicated project with the Supabase CLI.
+3. Under **Authentication**, enable email/password sign-in and public signup. Set the Auth Site URL and allowed redirect URLs to the deployed Ref Manager origin. If email confirmation is enabled, configure [custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp) so confirmation emails can reach people outside the project's Supabase organization.
+4. Set these values in `.env.local` for development and in the Ref Manager Vercel project for the environment you are deploying.
 
    ```dotenv
    VITE_SUPABASE_URL=https://your-project-ref.supabase.co
    VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
    ```
 
-   Use the project's **publishable** key. Vite embeds these values in the client build. Rebuild the app after changing them.
+   Use the project's **publishable** key. Vite embeds these values in the browser build. Rebuild after changing them.
 
-5. Open **Library → Team library**, sign in as an invited member, and create a reference. Open the same team library as a second member to check shared access. Edit the same reference from both accounts to confirm the stale edit is rejected. A signed-in account without a membership row should see an access message.
+5. Open **Library → Cloud library** and create an account. Add or copy a local reference to test cloud edits. Sign in to the same account in another browser to verify the reference appears. Sign in to a different account to verify it has a separate library.
 
-The team view refreshes every 30 seconds while visible, on return to the tab, and after edits. A record's revision prevents silently overwriting another member's work. The member who created a team reference can delete it. Publishing copies bibliographic metadata, including the abstract, collection names, and tags. Personal notes, PDFs, and annotations are outside the shared library.
+Cloud records refresh every 30 seconds while the view is open, when you return to the tab, and after writes. The revision check rejects stale changes. References, collection names, tags, reading status, and the per-reference cloud note are stored per account. Local references can be copied to and from the cloud view. PDFs, annotations, and existing local notes stay on the device and can be transferred in a library backup.

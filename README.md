@@ -41,11 +41,11 @@ Open **Library → Library backup** to download a JSON file containing reference
 
 The personal library runs without an account or a VPS. Backups can be transferred manually. Online metadata search and fetching styles from the CSL catalog require internet access.
 
-## Shared team library
+## Personal cloud library
 
-One deployment can optionally connect to one private team library. Invited members can publish or edit references, write a shared note per reference, and save a personal copy. The team library refreshes every 30 seconds while open and checks the record revision before saving an edit. Personal notes, annotations, and PDF attachments stay in the browser.
+Ref Manager works without an account. **Library → Cloud library** offers an optional private account for storing references, collections, tags, reading status, and a note per reference across devices. Copy references explicitly between the browser library and the cloud library. PDFs, annotations, and existing local notes stay in the browser.
 
-A dedicated Supabase project and member accounts are needed. See the [team library setup guide](supabase/README.md).
+The cloud view refreshes while open and checks the revision before saving an edit. Self-service accounts require a configured Supabase project. See the [cloud setup guide](supabase/README.md).
 
 ## Develop locally
 
