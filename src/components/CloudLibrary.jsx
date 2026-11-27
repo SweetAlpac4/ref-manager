@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react"
 import MetadataEditor from "./MetadataEditor"
+import CloudConflict from "./CloudConflict"
+import { cloudDraft, CloudRevisionConflict, hasCloudChanges } from "../lib/cloudChanges"
 import { normalizeText } from "../lib/duplicates"
 import { READING_STATUSES, saveToLibrary } from "../lib/storage"
 import {
@@ -80,9 +82,11 @@ function CloudReferences({ personalReferences, onPersonalChange }) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshMessage, setRefreshMessage] = useState("")
+  const [lastChecked, setLastChecked] = useState(null)
   const [message, setMessage] = useState("")
   const [refreshVersion, setRefreshVersion] = useState(0)
   const [view, setView] = useState(null)
+  const [conflict, setConflict] = useState(null)
   const [query, setQuery] = useState("")
   const [busy, setBusy] = useState(false)
 
@@ -100,6 +104,7 @@ function CloudReferences({ personalReferences, onPersonalChange }) {
         setRows(items)
         setLoading(false)
         setRefreshMessage("")
+        setLastChecked(new Date())
       } catch {
         if (active) setRefreshMessage("Could not refresh the cloud library. Check your connection and try again.")
       } finally {
@@ -154,10 +159,20 @@ function CloudReferences({ personalReferences, onPersonalChange }) {
   })
 
   const change = async (record, updates) => {
-    const saved = await updateCloudReference(record, updates)
-    setView({ record: saved, mode: "detail" })
-    setMessage("Cloud reference updated.")
-    refresh()
+    setMessage("")
+    const draft = cloudDraft(record, updates)
+    try {
+      const changed = hasCloudChanges(draft)
+      const saved = changed ? await updateCloudReference(record, draft) : record
+      setConflict(null)
+      setView({ record: saved, mode: "detail" })
+      setMessage(changed ? "Cloud reference updated." : "Cloud reference is up to date.")
+      refresh()
+    } catch (error) {
+      if (!(error instanceof CloudRevisionConflict)) throw error
+      setConflict({ base: record, draft })
+      refresh()
+    }
   }
 
   const deleteRecord = record => {
@@ -176,49 +191,57 @@ function CloudReferences({ personalReferences, onPersonalChange }) {
 
   return <>
     {refreshMessage && <p role="alert">{refreshMessage}</p>}
+    {refreshMessage && <button className="link-pill" onClick={refresh}>Retry refresh</button>}
     {loading && !refreshMessage && <p>Loading cloud library…</p>}
-    {loading && refreshMessage && <button className="link-pill" onClick={refresh}>Retry</button>}
+    {lastChecked && <p>Last checked <time dateTime={lastChecked.toISOString()}>{lastChecked.toLocaleTimeString()}</time></p>}
     {!loading && <>
       {message && <p role="status">{message}</p>}
-      {view && <button className="link-pill" disabled={busy} onClick={() => { setView(null); setMessage("") }}>Back to cloud references</button>}
+      {view && <button className="link-pill" disabled={busy || Boolean(conflict)}
+        onClick={() => { setView(null); setMessage("") }}>Back to cloud references</button>}
       {view?.mode === "add" && <MetadataEditor onSave={add} onCancel={() => setView(null)} />}
       {selected && <>
         <h3>{selected.metadata.title}</h3>
-        {stale && <p role="status">This reference changed on another device. Copy any unsaved edits before reloading it.</p>}
-        {stale && <button className="link-pill" disabled={busy} onClick={() => open(selected.id)}>Reload latest version</button>}
-        {view.mode === "metadata" && <MetadataEditor key={selected.revision}
-          metadata={{ ...selected.metadata, id: selected.id }}
-          onCancel={() => setView({ record: selected, mode: "detail" })}
-          onSave={metadata => change(selected, { metadata })} />}
+        {stale && !conflict && <p role="status">This reference changed elsewhere. Save your edits to compare them with the latest version.</p>}
+        {conflict && <CloudConflict key={conflict.base.revision} {...conflict} busy={busy}
+          onSave={(record, changes) => run(() => change(record, changes))} onContinue={() => setConflict(null)} />}
+        {view.mode === "metadata" && <fieldset className="cloud-edit-fields" disabled={Boolean(conflict)}>
+          <MetadataEditor key={selected.revision}
+            metadata={{ ...selected.metadata, id: selected.id }}
+            onCancel={() => setView({ record: selected, mode: "detail" })}
+            onSave={metadata => change(selected, { metadata })} />
+        </fieldset>}
         {view.mode === "detail" && <>
           <p>{(selected.metadata.authors ?? []).join(", ")} {selected.metadata.year}</p>
           {selected.metadata.abstract && <p className="note-body">{selected.metadata.abstract}</p>}
           <div className="link-row">
-            <button className="link-pill" onClick={() => setView({ record: selected, mode: "metadata" })}>Edit metadata</button>
+            <button className="link-pill" disabled={busy || Boolean(conflict)}
+              onClick={() => setView({ record: selected, mode: "metadata" })}>Edit metadata</button>
             <button className="link-pill" disabled={busy} onClick={() => savePersonal(selected)}>Save to this browser</button>
-            <button className="link-pill link-pill-danger" disabled={busy}
+            <button className="link-pill link-pill-danger" disabled={busy || Boolean(conflict)}
               onClick={() => deleteRecord(selected)}>Delete cloud reference</button>
           </div>
-          <form className="reference-fields" key={`${selected.id}-${selected.revision}`} onSubmit={event => {
-            event.preventDefault()
-            const fields = new FormData(event.currentTarget)
-            run(() => change(selected, {
-              note: fields.get("note"),
-              metadata: {
-                collections: fields.get("collections").split(","),
-                tags: fields.get("tags").split(","),
-                readingStatus: fields.get("readingStatus"),
-              },
-            }))
-          }}>
-            <label>Collections, separated by commas<input name="collections" defaultValue={selected.metadata.collections?.join(", ")} /></label>
-            <label>Tags, separated by commas<input name="tags" defaultValue={selected.metadata.tags?.join(", ")} /></label>
-            <label>Reading status<select name="readingStatus" defaultValue={selected.metadata.readingStatus ?? "unread"}>
-              {READING_STATUSES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select></label>
-            <label>Cloud note<textarea name="note" rows={6} maxLength={12000} defaultValue={selected.personal_note} /></label>
-            <button className="link-pill" disabled={busy}>Save cloud details</button>
-          </form>
+          <fieldset className="cloud-edit-fields" disabled={Boolean(conflict)}>
+            <form className="reference-fields" key={`${selected.id}-${selected.revision}`} onSubmit={event => {
+              event.preventDefault()
+              const fields = new FormData(event.currentTarget)
+              run(() => change(selected, {
+                note: fields.get("note"),
+                metadata: {
+                  collections: fields.get("collections").split(","),
+                  tags: fields.get("tags").split(","),
+                  readingStatus: fields.get("readingStatus"),
+                },
+              }))
+            }}>
+              <label>Collections, separated by commas<input name="collections" defaultValue={selected.metadata.collections?.join(", ")} /></label>
+              <label>Tags, separated by commas<input name="tags" defaultValue={selected.metadata.tags?.join(", ")} /></label>
+              <label>Reading status<select name="readingStatus" defaultValue={selected.metadata.readingStatus ?? "unread"}>
+                {READING_STATUSES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select></label>
+              <label>Cloud note<textarea name="note" rows={6} maxLength={12000} defaultValue={selected.personal_note} /></label>
+              <button className="link-pill" disabled={busy}>Save cloud details</button>
+            </form>
+          </fieldset>
         </>}
       </>}
       {!view && <>

@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
+import { CloudRevisionConflict } from "./cloudChanges.js"
 import { normalizeReferenceMetadata } from "./referenceMetadata.js"
 
 const url = import.meta.env.VITE_SUPABASE_URL?.trim()
@@ -38,11 +39,11 @@ export const addCloudReference = item =>
 
 export async function updateCloudReference(record, changes) {
   const patch = {}
-  if (changes.metadata) patch.metadata = normalizeReferenceMetadata({ ...record.metadata, ...changes.metadata })
+  if (Object.keys(changes.metadata ?? {}).length) patch.metadata = normalizeReferenceMetadata({ ...record.metadata, ...changes.metadata })
   if (changes.note !== undefined) patch.personal_note = changes.note
   const updated = await read(table().update(patch).eq("id", record.id).eq("revision", record.revision).select().maybeSingle())
-  if (!updated) throw new Error("This reference changed or is no longer available. Copy your edits, then reopen it to review the latest version.")
-  return updated
+  if (!updated) throw new CloudRevisionConflict()
+  return { ...updated, metadata: normalizeReferenceMetadata(updated.metadata) }
 }
 
 export async function removeCloudReference(record) {
