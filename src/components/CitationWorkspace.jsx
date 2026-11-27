@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { formatCitationWorkspace, initCitationStyles, registerCitationStyle, WORKSPACE_STYLES } from "../lib/citation"
+import { createWordManifest } from "../lib/wordAddIn"
 import { downloadFile } from "../lib/download"
 import { cleanCitationMarkup, copyCitation } from "../lib/citationClipboard"
 import { fetchCatalogStyle, prepareCustomStyle } from "../lib/cslImport"
@@ -222,8 +223,11 @@ export default function CitationWorkspace({ references, onBack }) {
         {exporting ? "Creating Word document…" : "Download Word document (.docx)"}
       </button>
       {!output.noteStyle && <button className="link-pill" onClick={downloadCitationFile}>
-        Download citation file for Google Docs
+        Download citation file
       </button>}
+      {window.location.protocol === "https:" && <button className="link-pill" onClick={() => {
+        downloadFile("ref-manager-word.xml", createWordManifest(window.location.origin), "application/xml")
+      }}>Download Word add-in manifest</button>}
       <h3>Bibliography</h3>
       {output.bibliography ? <>
         <div className="citation-text bibliography-output" dangerouslySetInnerHTML={{ __html: output.htmlBibliography }} />

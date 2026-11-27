@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://appsforoffice.microsoft.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://appsforoffice.microsoft.com; object-src 'none'; base-uri 'self'">
+  <title>Ref Manager for Word</title>
+  <style>
+    body { font: 14px/1.5 system-ui, sans-serif; margin: 16px; color-scheme: light dark; }
+    label, select, input, button { display: block; margin-block: 8px; }
+    select, input { width: 100%; }
+    #preview { overflow-wrap: anywhere; white-space: pre-wrap; }
+  </style>
+  <script defer src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <script defer src="./taskpane.js"></script>
+</head>
+<body>
+  <h1>Ref Manager</h1>
+  <label for="file">Citation file from Ref Manager</label>
+  <input id="file" type="file" accept=".json,application/json" disabled>
+  <div id="actions" hidden>
+    <label for="citation">Citation</label>
+    <select id="citation"></select>
+    <p id="preview"></p>
+    <button id="insert" type="button">Insert at cursor</button>
+    <button id="bibliography" type="button">Append bibliography</button>
+  </div>
+  <p id="feedback" role="status">Connecting to Word…</p>
+</body>
+</html>
