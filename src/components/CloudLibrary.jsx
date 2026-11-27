@@ -2,12 +2,13 @@ import { useEffect, useState } from "react"
 import MetadataEditor from "./MetadataEditor"
 import CloudConflict from "./CloudConflict"
 import CloudPdf from "./CloudPdf"
+import CloudTransfer from "./CloudTransfer"
 import { cloudDraft, CloudRevisionConflict, hasCloudChanges } from "../lib/cloudChanges"
 import { normalizeText } from "../lib/duplicates"
 import { findUncopiedReferences } from "../lib/cloudCopies"
-import { READING_STATUSES, saveToLibrary } from "../lib/storage"
+import { READING_STATUSES, importReferenceMetadata, saveToLibrary } from "../lib/storage"
 import {
-  getCloudReference, getCloudReferences, addCloudReference, copyCloudReferences,
+  getCloudReference, getCloudReferences, getCloudReferenceMetadata, addCloudReference, copyCloudReferences,
   removeCloudReference, cloudClient, updateCloudReference,
 } from "../lib/cloudLibrary"
 
@@ -91,7 +92,6 @@ function CloudReferences({ ownerId, personalReferences, onPersonalChange }) {
   const [conflict, setConflict] = useState(null)
   const [query, setQuery] = useState("")
   const [busy, setBusy] = useState(false)
-  const [copyIds, setCopyIds] = useState(() => new Set())
 
   const refresh = () => setRefreshVersion(value => value + 1)
 
@@ -130,7 +130,7 @@ function CloudReferences({ ownerId, personalReferences, onPersonalChange }) {
     setBusy(true)
     setMessage("")
     try {
-      await action()
+      return await action()
     } catch (error) {
       setMessage(error?.code === "23514" || error instanceof Error ? error.message : "The cloud library request failed. Try again.")
     } finally {
@@ -192,14 +192,25 @@ function CloudReferences({ ownerId, personalReferences, onPersonalChange }) {
   const row = selected && rows.find(item => item.id === selected.id)
   const stale = row && row.revision !== selected.revision
   const candidates = view ? [] : findUncopiedReferences(personalReferences, rows)
-  const selectedForCopy = candidates.filter(item => copyIds.has(item.id))
+  const downloadCandidates = view ? [] : findUncopiedReferences(rows, personalReferences)
 
-  const copySelected = async () => {
+  const copySelected = async selectedForCopy => {
     const { copied, skipped, complete } = await copyCloudReferences(selectedForCopy, ownerId)
     const status = `Copied ${copied} ${copied === 1 ? "reference" : "references"}.${skipped ? ` Skipped ${skipped} already represented in this copy or in the cloud.` : ""}`
     setMessage(complete ? status : `${status} The copy stopped before finishing. You can retry the remaining selection.`)
-    if (complete) setCopyIds(new Set())
     refresh()
+    return complete
+  }
+
+  const saveSelected = async selection => {
+    const metadata = await getCloudReferenceMetadata(selection.map(item => item.id), ownerId)
+    const result = await importReferenceMetadata(metadata)
+    if (!result.ok) throw new Error(result.error)
+    await onPersonalChange()
+    const skipped = selection.length - result.added
+    setMessage(`Saved ${result.added} ${result.added === 1 ? "reference" : "references"} to this browser.${skipped ? ` Skipped ${skipped} duplicates or unavailable references.` : ""}`)
+    if (metadata.length !== selection.length) refresh()
+    return true
   }
 
   return <>
@@ -265,40 +276,14 @@ function CloudReferences({ ownerId, personalReferences, onPersonalChange }) {
           <button className="link-pill" disabled={busy} onClick={refresh}>Refresh</button>
           <button className="link-pill" disabled={busy} onClick={() => setView({ mode: "add" })}>Add cloud reference</button>
         </div>
-        {personalReferences.length > 0 && <details className="library-backup cloud-copy">
-          <summary>Copy from this browser ({candidates.length} available)</summary>
-          <p>References already in the cloud are skipped. Upload PDFs separately from each cloud reference.</p>
-          {candidates.length === 0 && <p>All local references are already represented in the cloud library.</p>}
-          {candidates.length > 0 && <form onSubmit={event => {
-            event.preventDefault()
-            if (!busy && selectedForCopy.length) run(copySelected)
-          }}>
-            <div className="library-filters">
-              <button type="button" className="link-pill" disabled={busy || selectedForCopy.length === candidates.length}
-                onClick={() => setCopyIds(new Set(candidates.map(item => item.id)))}>Select all available</button>
-              <button type="button" className="link-pill" disabled={busy || !selectedForCopy.length}
-                onClick={() => setCopyIds(new Set())}>Clear selection</button>
-            </div>
-            <fieldset className="cloud-copy-list" disabled={busy}>
-              <legend>Local references</legend>
-              {candidates.map(item => <label className="checkbox-label" key={item.id}>
-                <input type="checkbox" checked={copyIds.has(item.id)} onChange={event => {
-                  const checked = event.target.checked
-                  setCopyIds(previous => {
-                    const next = new Set(previous)
-                    if (checked) next.add(item.id)
-                    else next.delete(item.id)
-                    return next
-                  })
-                }} />
-                <span>{item.title}{item.year ? ` (${item.year})` : ""}</span>
-              </label>)}
-            </fieldset>
-            <button className="link-pill button-primary" disabled={busy || !selectedForCopy.length}>
-              {busy ? "Copying…" : `Copy selected to cloud (${selectedForCopy.length})`}
-            </button>
-          </form>}
-        </details>}
+        {rows.length > 0 && <CloudTransfer title="Save to this browser" candidates={downloadCandidates}
+          legend="Cloud references" description="Save reference metadata and labels to this browser. Download cloud PDFs separately."
+          empty="All cloud references are already represented in this browser."
+          action="Save selected to this browser" busy={busy} onTransfer={selection => run(() => saveSelected(selection))} />}
+        {personalReferences.length > 0 && <CloudTransfer title="Copy from this browser" candidates={candidates}
+          legend="Local references" description="References already in the cloud are skipped. Upload PDFs separately from each cloud reference."
+          empty="All local references are already represented in the cloud library."
+          action="Copy selected to cloud" busy={busy} onTransfer={selection => run(() => copySelected(selection))} />}
         {rows.filter(item => normalizeText(item.title).includes(normalizeText(query))).map(item =>
           <article className="note-item" key={item.id}>
             <button className="link-pill" disabled={busy} onClick={() => open(item.id)}>{item.title}</button>

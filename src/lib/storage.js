@@ -374,13 +374,16 @@ export const importLibraryFromJson = async (jsonText) => {
   if (!Array.isArray(parsed)) {
     return { ok: false, error: "The JSON file must contain an array of references." }
   }
+  return importReferenceMetadata(parsed)
+}
 
+export async function importReferenceMetadata(items) {
   try {
     return await db.transaction("rw", db.references, async () => {
       const existing = await db.references.toArray()
       const toAdd = []
       let skipped = 0, duplicates = 0
-      for (const raw of parsed) {
+      for (const raw of items) {
         if (!isValidEntry({ ...raw, id: raw?.id ?? "tmp" })) { skipped++; continue }
         const entry = sanitizeEntry({ ...raw, id: crypto.randomUUID() })
         if (existing.some(item => duplicateScore(item, entry) >= 2)) { duplicates++; continue }

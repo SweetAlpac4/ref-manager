@@ -42,6 +42,16 @@ export async function getCloudReference(id) {
   return record && { ...record, metadata: normalizeReferenceMetadata(record.metadata) }
 }
 
+export async function getCloudReferenceMetadata(ids, ownerId) {
+  const records = []
+  for (let offset = 0; offset < ids.length; offset += copyBatchSize) {
+    const rows = await read(table().select("metadata").eq("owner_id", ownerId)
+      .in("id", ids.slice(offset, offset + copyBatchSize)))
+    records.push(...rows.map(row => normalizeReferenceMetadata(row.metadata)))
+  }
+  return records
+}
+
 export const addCloudReference = item =>
   read(table().insert({ metadata: normalizeReferenceMetadata(item) }).select("id").single())
 

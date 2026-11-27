@@ -70,7 +70,7 @@ Local data lives in IndexedDB in the current browser profile and site origin. Ke
 
 ## Optional cloud library
 
-Open **Library → Cloud library** and sign in to a configured Supabase deployment. Under **Copy from this browser**, check individual references or choose **Select all available**, then click **Copy selected to cloud**. References matched to cloud records are skipped. You can also save cloud references back to the browser. Copies are independent. The cloud side stores collections, tags, reading status, and one note per reference.
+Open **Library → Cloud library** and sign in to a configured Supabase deployment. Use **Copy from this browser** to upload metadata or **Save to this browser** to bring cloud references into a local library. Check individual references or choose **Select all available**, then confirm the transfer. Each list shows references that are missing from its destination. Copies are independent. The cloud side stores collections, tags, reading status, and one note per reference.
 
 Cloud records are scoped to your account. The view shows when it last checked for updates and refreshes every 30 seconds while open, when you return to the tab, and after writes. If another edit changes the revision, the app keeps your draft and lets you compare overlapping fields before saving.
 
