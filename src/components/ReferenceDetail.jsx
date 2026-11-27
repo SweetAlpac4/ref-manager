@@ -2,7 +2,9 @@ import { useState, useEffect, useMemo } from "react"
 import { lookupOpenAccessPdf, fetchThumbnail } from "../lib/crossref"
 import { cleanCitationMarkup, copyCitation } from "../lib/citationClipboard"
 import { initCitationStyles, formatCitation, STYLES } from "../lib/citation"
+import { normalizeDoi } from "../lib/duplicates"
 import { saveToLibrary, getSavedMatches, updateReference, READING_STATUSES } from "../lib/storage"
+import { normalizeReferenceUrl } from "../lib/referenceMetadata"
 import PdfAttachments from "./PdfAttachments"
 import NotesPanel from "./NotesPanel"
 import MetadataEditor from "./MetadataEditor"
@@ -93,11 +95,12 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
   const saveChanges = async changes => {
     const updated = await updateReference(metadata.id, changes)
     setMetadata(previous => ({ ...previous, ...updated,
-      pdfUrl: updated.doi === previous.doi ? updated.pdfUrl ?? previous.pdfUrl : updated.pdfUrl }))
+      pdfUrl: normalizeDoi(updated.doi) === normalizeDoi(previous.doi) ? updated.pdfUrl ?? previous.pdfUrl : updated.pdfUrl }))
     await onUpdate()
   }
 
   if (!metadata) return null
+  const sourceUrl = metadata.doi ? `https://doi.org/${metadata.doi}` : normalizeReferenceUrl(metadata.url)
 
   return (
     <div className="detail-view">
@@ -123,8 +126,8 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
           </p>
 
           <div className="link-row">
-            {metadata.doi && (
-              <a className="link-pill" href={`https://doi.org/${metadata.doi}`} target="_blank" rel="noreferrer">
+            {sourceUrl && (
+              <a className="link-pill" href={sourceUrl} target="_blank" rel="noreferrer">
                 View source
               </a>
             )}
@@ -147,7 +150,8 @@ export default function ReferenceDetail({ metadata: initialMetadata, onBack, onS
           {onUpdate && <>
             <button className="link-pill" onClick={() => setEditing(!editing)}>Edit metadata</button>
             {editing && <MetadataEditor metadata={metadata} onCancel={() => setEditing(false)} onSave={async changes => {
-              await saveChanges(changes.doi !== metadata.doi ? { ...changes, pdfUrl: null } : changes)
+              const doiChanged = normalizeDoi(changes.doi) !== normalizeDoi(metadata.doi)
+              await saveChanges(doiChanged ? { ...changes, pdfUrl: null } : changes)
               setEditing(false)
             }} />}
             <ReferenceOrganization metadata={metadata} onSave={saveChanges} />

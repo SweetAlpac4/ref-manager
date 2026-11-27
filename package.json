@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test:citation": "node test_citation.mjs"
+    "test:citation": "node test_citation.mjs",
+    "test:metadata": "node test_reference_metadata.mjs"
   },
   "dependencies": {
     "@citation-js/core": "^0.7.21",
@@ -29,6 +30,7 @@
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "fake-indexeddb": "6.2.8",
     "globals": "^17.6.0",
     "vite": "^8.0.12"
   }

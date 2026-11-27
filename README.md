@@ -61,6 +61,7 @@ Run these checks before pushing.
 ```sh
 npm run lint
 npm run test:citation
+npm run test:metadata
 npm run build
 ```
 

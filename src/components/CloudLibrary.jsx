@@ -189,7 +189,7 @@ function CloudReferences({ personalReferences, onPersonalChange }) {
         {view.mode === "metadata" && <MetadataEditor key={selected.revision}
           metadata={{ ...selected.metadata, id: selected.id }}
           onCancel={() => setView({ record: selected, mode: "detail" })}
-          onSave={metadata => change(selected, { metadata: { ...selected.metadata, ...metadata } })} />}
+          onSave={metadata => change(selected, { metadata })} />}
         {view.mode === "detail" && <>
           <p>{(selected.metadata.authors ?? []).join(", ")} {selected.metadata.year}</p>
           {selected.metadata.abstract && <p className="note-body">{selected.metadata.abstract}</p>}
@@ -202,10 +202,13 @@ function CloudReferences({ personalReferences, onPersonalChange }) {
           <form className="reference-fields" key={`${selected.id}-${selected.revision}`} onSubmit={event => {
             event.preventDefault()
             const fields = new FormData(event.currentTarget)
-            const labels = name => [...new Set(fields.get(name).split(",").map(value => value.trim()).filter(Boolean))]
             run(() => change(selected, {
               note: fields.get("note"),
-              metadata: { ...selected.metadata, collections: labels("collections"), tags: labels("tags"), readingStatus: fields.get("readingStatus") },
+              metadata: {
+                collections: fields.get("collections").split(","),
+                tags: fields.get("tags").split(","),
+                readingStatus: fields.get("readingStatus"),
+              },
             }))
           }}>
             <label>Collections, separated by commas<input name="collections" defaultValue={selected.metadata.collections?.join(", ")} /></label>

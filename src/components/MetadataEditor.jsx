@@ -1,9 +1,10 @@
 import { useState } from "react"
+import { normalizeReferenceUrl } from "../lib/referenceMetadata"
 
 const fields = [
   ["title", "Title"], ["journal", "Journal or publication"], ["publisher", "Publisher or institution"],
   ["year", "Year"], ["volume", "Volume"], ["issue", "Issue"],
-  ["pages", "Pages"], ["doi", "DOI"], ["isbn", "ISBN"],
+  ["pages", "Pages"], ["doi", "DOI"], ["isbn", "ISBN"], ["url", "Source URL"],
 ]
 
 const types = [
@@ -27,6 +28,10 @@ export default function MetadataEditor({ metadata = {}, onSave, onCancel }) {
     const changes = Object.fromEntries(fields.map(([key]) => [key, form.get(key).trim() || null]))
     if (!changes.title) {
       setMessage("Title is required.")
+      return
+    }
+    if (changes.url && !normalizeReferenceUrl(changes.url)) {
+      setMessage("Enter an HTTP or HTTPS source URL.")
       return
     }
     changes.abstract = form.get("abstract").trim() || null
@@ -60,7 +65,7 @@ export default function MetadataEditor({ metadata = {}, onSave, onCancel }) {
       </select>
     </label>
     {fields.map(([key, label]) => <label key={key}>{label}
-      <input name={key} required={key === "title"} defaultValue={metadata[key] ?? ""}
+      <input name={key} type={key === "url" ? "url" : "text"} required={key === "title"} defaultValue={metadata[key] ?? ""}
         pattern={key === "year" ? "[0-9]{1,4}" : undefined} />
     </label>)}
     <label>Authors, one per line in Last name, First name format

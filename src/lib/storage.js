@@ -1,5 +1,8 @@
 import Dexie from "dexie"
-import { duplicateScore, normalizeDoi } from "./duplicates.js"
+import { duplicateScore } from "./duplicates.js"
+import { cleanLabels, normalizeReferenceMetadata, READING_STATUSES } from "./referenceMetadata.js"
+
+export { READING_STATUSES }
 
 // --- Database ---
 // IndexedDB dipakai untuk data yang bisa berkembang besar (referensi + metadata).
@@ -52,10 +55,6 @@ export const editPdfAnnotations = async (attachmentId, edit) =>
     return annotations
   })
 
-export const READING_STATUSES = [
-  ["unread", "Unread"], ["reading", "Reading"], ["read", "Read"],
-]
-
 export const NOTE_KINDS = [
   ["note", "Note"], ["insight", "Research insight"], ["excerpt", "Excerpt"],
 ]
@@ -96,47 +95,12 @@ const isValidEntry = (item) => {
   )
 }
 
-const cleanLabels = values => Array.isArray(values)
-  ? [...new Set(values.filter(value => typeof value === "string").map(value => value.trim()).filter(Boolean))]
-  : []
-
-const cleanText = value => typeof value === "string" ? value.trim() || null
-  : typeof value === "number" && Number.isFinite(value) ? String(value) : null
-
-const nameFields = ["family", "given", "literal", "suffix", "dropping-particle", "non-dropping-particle"]
-
-const sanitizeEntry = item => {
-  const authors = (Array.isArray(item.authors) ? item.authors : []).filter(value => typeof value === "string" && value.trim())
-  const citationAuthors = (Array.isArray(item.citationAuthors) ? item.citationAuthors : authors)
-    .filter(value => typeof value === "string" && value.trim())
-  const names = Array.isArray(item.authorsStructured) ? item.authorsStructured : []
-  return {
-    id: item.id,
-    title: cleanText(item.title) ?? "",
-    authors,
-    citationAuthors,
-    contributorRole: item.contributorRole === "editor" ? "editor" : "author",
-    authorsStructured: names.filter(name => name && typeof name === "object")
-      .map(name => Object.fromEntries(nameFields.filter(key => typeof name[key] === "string").map(key => [key, name[key]])))
-      .filter(name => name.literal || name.family || name.given),
-    journal: cleanText(item.journal),
-    publisher: cleanText(item.publisher),
-    year: cleanText(item.year),
-    volume: cleanText(item.volume),
-    issue: cleanText(item.issue),
-    pages: cleanText(item.pages),
-    doi: normalizeDoi(item.doi) || null,
-    isbn: cleanText(item.isbn),
-    type: cleanText(item.type) ?? "article-journal",
-    abstract: cleanText(item.abstract),
-    pdfUrl: typeof item.pdfUrl === "string" && /^https?:\/\//i.test(item.pdfUrl) ? item.pdfUrl : null,
-    readingStatus: READING_STATUSES.some(([value]) => value === item.readingStatus) ? item.readingStatus : "unread",
-    collections: cleanLabels(item.collections),
-    tags: cleanLabels(item.tags),
-    savedAt: typeof item.savedAt === "string" && Number.isFinite(Date.parse(item.savedAt))
-      ? item.savedAt : new Date().toISOString(),
-  }
-}
+const sanitizeEntry = item => ({
+  id: item.id,
+  ...normalizeReferenceMetadata(item),
+  savedAt: typeof item.savedAt === "string" && Number.isFinite(Date.parse(item.savedAt))
+    ? item.savedAt : new Date().toISOString(),
+})
 
 export const getLibrary = async () => {
   const items = await db.references.orderBy("savedAt").reverse().toArray()
@@ -179,7 +143,7 @@ export const mergeReferences = async (keepId, otherId) => {
   return db.transaction("rw", db.references, db.notes, db.attachments, async () => {
     const [keep, other] = await db.references.bulkGet([keepId, otherId])
     if (!keep || !other) return false
-    for (const key of ["journal", "publisher", "year", "volume", "issue", "pages", "doi", "isbn", "abstract", "pdfUrl"]) {
+    for (const key of ["journal", "publisher", "year", "volume", "issue", "pages", "doi", "isbn", "abstract", "url", "pdfUrl"]) {
       if (!keep[key] && other[key]) keep[key] = other[key]
     }
     if (!keep.authors.length) {

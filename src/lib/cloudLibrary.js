@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
+import { normalizeReferenceMetadata } from "./referenceMetadata.js"
 
 const url = import.meta.env.VITE_SUPABASE_URL?.trim()
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim()
@@ -27,22 +28,17 @@ export async function getCloudReferences() {
   return rows.sort((a, b) => a.title.localeCompare(b.title) || a.id.localeCompare(b.id))
 }
 
-export const getCloudReference = id => read(table().select("*").eq("id", id).maybeSingle())
-
-const metadataFields = [
-  "title", "authors", "citationAuthors", "authorsStructured", "contributorRole", "journal", "publisher",
-  "year", "volume", "issue", "pages", "doi", "isbn", "type", "abstract", "collections", "tags", "readingStatus",
-]
-
-function cloudMetadata(item) {
-  return Object.fromEntries(metadataFields.filter(key => item[key] != null).map(key => [key, item[key]]))
+export async function getCloudReference(id) {
+  const record = await read(table().select("*").eq("id", id).maybeSingle())
+  return record && { ...record, metadata: normalizeReferenceMetadata(record.metadata) }
 }
 
-export const addCloudReference = item => read(table().insert({ metadata: cloudMetadata(item) }).select("id").single())
+export const addCloudReference = item =>
+  read(table().insert({ metadata: normalizeReferenceMetadata(item) }).select("id").single())
 
 export async function updateCloudReference(record, changes) {
   const patch = {}
-  if (changes.metadata) patch.metadata = cloudMetadata(changes.metadata)
+  if (changes.metadata) patch.metadata = normalizeReferenceMetadata({ ...record.metadata, ...changes.metadata })
   if (changes.note !== undefined) patch.personal_note = changes.note
   const updated = await read(table().update(patch).eq("id", record.id).eq("revision", record.revision).select().maybeSingle())
   if (!updated) throw new Error("This reference changed or is no longer available. Copy your edits, then reopen it to review the latest version.")
