@@ -31,11 +31,15 @@ Use **Download citation file** in an in-text style. Install the [document-bound 
 
 On the HTTPS deployment, download the **Word add-in manifest** from the citation workspace. [Sideload the add-in](integrations/word/README.md), load a citation file, and insert citations at the cursor or append the bibliography from the task pane.
 
+### Insert citations in LibreOffice Writer
+
+Install the [Writer Python macros](integrations/libreoffice/README.md) in your LibreOffice user profile. Run a macro to load a citation file and insert a chosen citation or append its bibliography.
+
 ## Back up and move your library
 
 Open **Library → Library backup** to download a JSON file containing references, collections, tags, notes, PDFs, and annotations. Restore it in another browser to move your library. When a reference already exists in the destination, the restore keeps its data and adds collection and tag memberships. The regular JSON export contains references only.
 
-Ref Manager runs without an account or a VPS. Backups can be transferred manually. Automatic sync, live collaboration, and the LibreOffice macro are pending. Online metadata search and fetching styles from the CSL catalog require internet access.
+Ref Manager runs without an account or a VPS. Backups can be transferred manually. Automatic sync and live collaboration are pending. Online metadata search and fetching styles from the CSL catalog require internet access.
 
 ## Develop locally
 
